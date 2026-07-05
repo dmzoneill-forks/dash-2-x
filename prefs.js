@@ -807,6 +807,17 @@ const DockSettings = GObject.registerClass({
             else
                 applicationsOverrideCounter.sensitive = false;
         });
+
+        const clearNotificationsOnFocusCheck =
+            this._builder.get_object('clear_notifications_on_focus_check');
+        this._settings.bind('clear-notifications-on-focus',
+            clearNotificationsOnFocusCheck,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT);
+        notificationsCounterCheck.bind_property('active',
+            clearNotificationsOnFocusCheck, 'sensitive',
+            GObject.BindingFlags.SYNC_CREATE);
+
         this._settings.bind('show-show-apps-button',
             this._builder.get_object('show_applications_button_switch'),
             'active',

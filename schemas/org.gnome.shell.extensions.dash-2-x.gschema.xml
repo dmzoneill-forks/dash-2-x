@@ -666,6 +666,11 @@
       <summary>Wether the application-provioded counter via Unity API should override the notifications or be summed to it</summary>
       <description>If an application provides a counter through the Unity API, then such value will be used. Otherwise the counter will be summed with the unread notification numbers (if enabled)</description>
     </key>
+    <key name="clear-notifications-on-focus" type="b">
+      <default>false</default>
+      <summary>Clear notification counter when app gets focus</summary>
+      <description>Automatically clear the notification counter badge on a dock icon when the application window receives focus. The notifications themselves remain in the GNOME Shell notification tray.</description>
+    </key>
     <key name="user-categories" type="s">
       <default>''</default>
       <summary>User-defined app categories</summary>

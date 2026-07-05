@@ -401,6 +401,15 @@ export const DockAbstractAppIcon = GObject.registerClass({
             }
         }
         this.focused = isFocused && this.running;
+
+        // Clear notification counter badge when the app gets focus (#55)
+        if (this.focused && Docking.DockManager.settings.clearNotificationsOnFocus) {
+            const appId = this.app?.id;
+            if (appId) {
+                const {notificationsMonitor} = Docking.DockManager.getDefault();
+                notificationsMonitor.acknowledgeAppNotifications(appId);
+            }
+        }
     }
 
     _updateUrgentWindows(interestingWindows) {

@@ -68,6 +68,27 @@ export class NotificationsMonitor {
         return this._appNotifications[appId] ?? 0;
     }
 
+    /**
+     * Mark all notifications for a given app as acknowledged so the
+     * counter badge clears.  The notifications themselves remain in
+     * the GNOME Shell notification tray for manual dismissal.
+     */
+    acknowledgeAppNotifications(appId) {
+        if (!appId || !this._appNotifications?.[appId])
+            return;
+
+        Main.messageTray.getSources().forEach(source => {
+            source.notifications.forEach(notification => {
+                const app = notification.source?.app ?? notification.source?._app;
+                const nId = app?.id ?? app?._appId;
+                if (nId === appId && notification.resident && !notification.acknowledged)
+                    notification.acknowledged = true;
+            });
+        });
+
+        this._checkNotifications();
+    }
+
     _updateState() {
         if (this.enabled) {
             this._signalsHandler.addWithLabel(Labels.SOURCES, Main.messageTray,
