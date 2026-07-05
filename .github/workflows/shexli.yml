@@ -23,7 +23,9 @@ jobs:
         run: pip install 'tree-sitter==0.23.2' 'tree-sitter-javascript==0.23.1' && pip install --no-deps shexli
 
       - name: Install build dependencies
-        run: sudo apt-get install -y sassc gettext
+        run: |
+          sudo apt-get install -y gettext
+          sudo npm install -g sass
 
       - name: Build extension
         run: make
