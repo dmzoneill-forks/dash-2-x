@@ -2591,10 +2591,6 @@ export class DockManager {
             this._toggle.bind(this),
         ], [
             this._settings,
-            'changed::preferred-monitor',
-            this._toggle.bind(this),
-        ], [
-            this._settings,
             'changed::preferred-monitor-by-connector',
             this._toggle.bind(this),
         ], [
@@ -2656,23 +2652,9 @@ export class DockManager {
             return;
 
 
-        this._preferredMonitorIndex = this.settings.preferredMonitor;
-        if (this._preferredMonitorIndex === -2) {
-            const monitorManager = Utils.getMonitorManager();
-            this._preferredMonitorIndex = monitorManager.get_monitor_for_connector(
-                this.settings.preferredMonitorByConnector);
-        } else if (this._preferredMonitorIndex >= 0) {
-            // Primary monitor used to be always 0 in Gdk, but the shell has a different
-            // concept (where the order depends on mutter order).
-            // So even if now the extension settings may use the same logic of the shell
-            // we prefer not to break the previously configured systems, and so we still
-            // assume that the gsettings monitor numbering follows the old strategy.
-            // This ensure the indexing in the settings and in the shell are matched,
-            // i.e. that we start counting from the primaryMonitorIndex
-            this._preferredMonitorIndex =
-                (Main.layoutManager.primaryIndex + this._preferredMonitorIndex) %
-                Main.layoutManager.monitors.length;
-        }
+        const monitorManager = Utils.getMonitorManager();
+        this._preferredMonitorIndex = monitorManager.get_monitor_for_connector(
+            this.settings.preferredMonitorByConnector);
 
         // In case of multi-monitor, we consider the dock on the primary monitor
         // to be the preferred (main) one regardless of the settings the dock
