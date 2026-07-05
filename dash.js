@@ -469,12 +469,19 @@ export const DockDash = GObject.registerClass({
         // ─────────────────────────────────────────────────────────────────
 
         // Determine insertion index using midpoints
+        const rtl = Clutter.get_default_text_direction() === Clutter.TextDirection.RTL;
         let insertPos = clean.length;
         for (let i = 0; i < clean.length; i++) {
             const [cx, cy] = clean[i].get_transformed_position();
             const [cw, ch] = clean[i].get_transformed_size();
             const mid = this._isHorizontal ? cx + cw / 2 : cy + ch / 2;
-            if (cursor <= mid) {
+            // In RTL horizontal mode, icons are laid out right-to-left,
+            // so cursor > mid means "before this icon". In vertical mode
+            // or LTR, cursor <= mid means "before this icon".
+            const beforeIcon = (rtl && this._isHorizontal)
+                ? cursor > mid
+                : cursor <= mid;
+            if (beforeIcon) {
                 insertPos = i;
                 break;
             }
