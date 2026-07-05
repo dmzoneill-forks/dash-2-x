@@ -693,11 +693,20 @@ export const DockDash = GObject.registerClass({
         // ── Regular favorite move / add ─────────────────────────────────
         const id = app.get_id?.();
         if (!id || app.is_window_backed()) return false;
-        if (!global.settings.is_writable('favorite-apps')) return false;
 
         const favorites = AppFavorites.getAppFavorites();
         const favMap = favorites.getFavoriteMap();
         const srcIsFavorite = id in favMap;
+
+        // If the app is not a favorite (just a running app), only reorder
+        // visually via dock-order -- do NOT pin it as a favorite (#72).
+        if (!srcIsFavorite) {
+            dockManager.setDockOrder(newDockOrder);
+            this._clearDragPlaceholder();
+            return true;
+        }
+
+        if (!global.settings.is_writable('favorite-apps')) return false;
 
         // favPos = number of non-category entries before id in new order
         let favPos = 0;
@@ -711,10 +720,7 @@ export const DockDash = GObject.registerClass({
 
         const laters = global.compositor.get_laters();
         laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
-            if (srcIsFavorite)
-                favorites.moveFavoriteToPos(id, favPos);
-            else
-                favorites.addFavoriteAtPos(id, favPos);
+            favorites.moveFavoriteToPos(id, favPos);
             return GLib.SOURCE_REMOVE;
         });
         return true;
