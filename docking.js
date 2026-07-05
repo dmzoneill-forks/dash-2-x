@@ -1639,6 +1639,32 @@ const DockedDash = GObject.registerClass({
         if (appIndex < apps.length)
             apps[appIndex].activate(button);
     }
+
+    /**
+     * Cycle through windows of the app at the given dock position.
+     *
+     * @param {number} appIndex - position in the dock
+     * @param {boolean} reversed - cycle backwards when true
+     */
+    _cycleAppWindows(appIndex, reversed) {
+        const children = this.dash._box.get_children().filter(actor => {
+            return actor.child &&
+                       actor.child.app;
+        });
+
+        const apps = children.map(actor => {
+            return actor.child;
+        });
+
+        if (appIndex < apps.length) {
+            const appIcon = apps[appIndex];
+            const windows = appIcon.getInterestingWindows();
+            if (windows.length > 0)
+                appIcon._cycleThroughWindows(reversed);
+            else
+                appIcon.activate(1);
+        }
+    }
 });
 
 /*
@@ -1730,20 +1756,33 @@ const KeyboardShortcuts = class DashToDockKeyboardShortcuts {
             return;
 
         // Setup keyboard bindings for dash elements
-        const keys = ['app-hotkey-', 'app-shift-hotkey-', 'app-ctrl-hotkey-'];
+        // Super+N activates the app, Super+Shift+N cycles backwards through
+        // its windows, and Super+Ctrl+N opens a new window.
         const {mainDock} = DockManager.getDefault();
-        keys.forEach(function (key) {
-            for (let i = 0; i < NUM_HOTKEYS; i++) {
-                const appNum = i;
-                Main.wm.addKeybinding(key + (i + 1), DockManager.settings,
-                    Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
-                    Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-                    () => {
-                        mainDock._activateApp(appNum);
-                        this._showOverlay();
-                    });
-            }
-        }, this);
+        for (let i = 0; i < NUM_HOTKEYS; i++) {
+            const appNum = i;
+            Main.wm.addKeybinding(`app-hotkey-${i + 1}`, DockManager.settings,
+                Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+                Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+                () => {
+                    mainDock._activateApp(appNum);
+                    this._showOverlay();
+                });
+            Main.wm.addKeybinding(`app-shift-hotkey-${i + 1}`, DockManager.settings,
+                Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+                Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+                () => {
+                    mainDock._cycleAppWindows(appNum, true);
+                    this._showOverlay();
+                });
+            Main.wm.addKeybinding(`app-ctrl-hotkey-${i + 1}`, DockManager.settings,
+                Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
+                Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+                () => {
+                    mainDock._activateApp(appNum);
+                    this._showOverlay();
+                });
+        }
 
         this._hotKeysEnabled = true;
     }
