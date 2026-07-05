@@ -1392,6 +1392,22 @@ export const DockDash = GObject.registerClass({
                 removedActors.push(children[i]);
             } else {
                 expectedUsed[matchIndex] = true;
+
+                // If the matched item is currently animating out from a
+                // previous workspace switch, cancel the destruction and
+                // re-show it.  Without this, rapidly switching back to a
+                // workspace before the disappear animation finishes leaves
+                // icons invisible (#96).
+                const actor = children[i];
+                if (actor.animatingOut) {
+                    actor.remove_all_transitions();
+                    actor.animatingOut = false;
+                    actor.set({
+                        scale_x: 1,
+                        scale_y: 1,
+                        opacity: 255,
+                    });
+                }
             }
         }
 
