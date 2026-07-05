@@ -513,8 +513,10 @@ const DockedDash = GObject.registerClass({
             delete this._marginLater;
         }
 
-        if (this._triggerTimeoutId)
+        if (this._triggerTimeoutId) {
             GLib.source_remove(this._triggerTimeoutId);
+            this._triggerTimeoutId = 0;
+        }
 
         this._restoreUnredirect();
 
@@ -530,6 +532,9 @@ const DockedDash = GObject.registerClass({
             PointerWatcher.getPointerWatcher()._removeWatch(this._dockWatch);
             this._dockWatch = null;
         }
+
+        // Cancel any pending dock dwell timeout
+        this._cancelDockDwell();
 
         if (this._optionalScrollWorkspaceSwitchDeadTimeId) {
             GLib.source_remove(this._optionalScrollWorkspaceSwitchDeadTimeId);

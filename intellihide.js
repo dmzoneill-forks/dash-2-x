@@ -133,6 +133,9 @@ export class Intellihide {
     }
 
     _windowCreated(display, metaWindow) {
+        if (!this._isEnabled)
+            return;
+
         const dominated = metaWindow.get_compositor_private();
         if (dominated)
             this._addWindowSignals(dominated);
