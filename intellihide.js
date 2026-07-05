@@ -248,6 +248,39 @@ export class Intellihide {
                             overlaps = OverlapStatus.TRUE;
                             break;
                         }
+
+                        // When a window is tiled (half-maximized vertically), check
+                        // if there is a partner tiled window on the same monitor that
+                        // together cover the full screen width.  If so, treat the
+                        // arrangement as overlapping the dock even though the
+                        // individual window may not geometrically overlap it.
+                        if (win.maximized_vertically && !win.maximized_horizontally &&
+                            win.get_monitor() === this._monitorIndex) {
+                            for (let j = 0; j < windows.length; j++) {
+                                if (j === i)
+                                    continue;
+                                const partner = windows[j].get_meta_window();
+                                if (partner &&
+                                    partner.maximized_vertically &&
+                                    !partner.maximized_horizontally &&
+                                    partner.get_monitor() === this._monitorIndex) {
+                                    // Two tiled windows side by side — check if
+                                    // they together span the full monitor width
+                                    const monitor = global.display.get_monitor_geometry(this._monitorIndex);
+                                    const r1 = win.get_frame_rect();
+                                    const r2 = partner.get_frame_rect();
+                                    const combinedLeft = Math.min(r1.x, r2.x);
+                                    const combinedRight = Math.max(r1.x + r1.width,
+                                        r2.x + r2.width);
+                                    if (combinedRight - combinedLeft >= monitor.width - 2) {
+                                        overlaps = OverlapStatus.TRUE;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (overlaps === OverlapStatus.TRUE)
+                                break;
+                        }
                     }
                 }
             }
