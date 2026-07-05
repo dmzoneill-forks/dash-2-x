@@ -456,6 +456,16 @@ const DockedDash = GObject.registerClass({
                 });
         }
 
+        // GNOME 50: the dock itself (a Chrome actor) can be hidden by struts
+        // recalculation.  Re-show it immediately unless intentionally hidden.
+        this.connect('notify::visible', () => {
+            if (!this.visible && !Main.overview.visibleTarget &&
+                !DockManager.settings.manualhide) {
+                this.visible = true;
+                this.show();
+            }
+        });
+
         this.connect('destroy', this._onDestroy.bind(this));
     }
 
