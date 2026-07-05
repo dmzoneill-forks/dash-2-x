@@ -764,9 +764,21 @@ class TrashAppInfo extends LocationAppInfo {
     }
 
     _init(cancellable = null) {
+        const trashLocation = Gio.file_new_for_uri(TRASH_URI);
+        let trashName = __('Trash');
+        try {
+            const info = trashLocation.query_info(
+                Gio.FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME,
+                Gio.FileQueryInfoFlags.NONE, null);
+            const displayName = info.get_display_name();
+            if (displayName)
+                trashName = displayName;
+        } catch {
+            // Fall back to translated name
+        }
         super._init({
-            location: Gio.file_new_for_uri(TRASH_URI),
-            name: __('Trash'),
+            location: trashLocation,
+            name: trashName,
             icon: Gio.ThemedIcon.new(FALLBACK_TRASH_ICON),
             cancellable,
         });
