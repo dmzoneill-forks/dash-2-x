@@ -571,6 +571,12 @@ class MountableVolumeAppInfo extends LocationAppInfo {
         this.location = this.mount?.get_default_location() ??
             this.volume.get_activation_root();
 
+        // Clear cached handler app so it's re-resolved with the updated
+        // location URI. Without this, a handler resolved before mounting
+        // (e.g. Disk Utility for an activation root URI) would persist
+        // after mounting, preventing the file browser from opening (#123).
+        this._handlerApp = null;
+
         this._updateLocationIcon({custom: true});
     }
 
