@@ -562,6 +562,11 @@ const DockedDash = GObject.registerClass({
             this._triggerTimeoutId = 0;
         }
 
+        if (this._hoverCheckId) {
+            GLib.source_remove(this._hoverCheckId);
+            this._hoverCheckId = 0;
+        }
+
         this._restoreUnredirect();
 
         // Remove barrier timeout
@@ -974,10 +979,26 @@ const DockedDash = GObject.registerClass({
             // Skip if dock is not in autohide mode for instance because it is shown
             // by intellihide.
             if (this._autohideIsEnabled) {
-                if (this._box.hover || Main.overview.visible)
+                if (this._box.hover || Main.overview.visible) {
                     this._show();
-                else
+
+                    // Safety net for multi-monitor setups: when the pointer
+                    // crosses the dock very quickly (e.g. moving between
+                    // monitors), the leave event can be lost, leaving the
+                    // dock stuck visible.  Schedule a deferred re-check to
+                    // resync the hover state (#54).
+                    if (this._hoverCheckId)
+                        GLib.source_remove(this._hoverCheckId);
+                    this._hoverCheckId = GLib.timeout_add(
+                        GLib.PRIORITY_DEFAULT, 500, () => {
+                            this._hoverCheckId = 0;
+                            if (this._box?.get_stage())
+                                this._box.sync_hover();
+                            return GLib.SOURCE_REMOVE;
+                        });
+                } else {
                     this._hide();
+                }
             }
         }
     }
