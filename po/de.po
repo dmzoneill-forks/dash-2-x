@@ -8,7 +8,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Dash to Dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-07-13 00:20+0200\n"
 "PO-Revision-Date: 2025-07-13 00:26+0200\n"
@@ -130,7 +130,7 @@ msgstr[0] "%d Fenster beenden"
 msgstr[1] "%d Fenster beenden"
 
 #: appIcons.js:1511
-msgid "Dash to Dock"
+msgid "Dash 2 X"
 msgstr "Dash-to-Dock"
 
 #: appIcons.js:1513

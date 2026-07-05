@@ -440,17 +440,19 @@ const DockedDash = GObject.registerClass({
     }
 
     _trackDock() {
+        if (this.get_parent())
+            Main.layoutManager.removeChrome(this);
+
         if (DockManager.settings.dockFixed) {
-            if (this.get_parent())
-                Main.layoutManager.removeChrome(this);
             Main.layoutManager.addChrome(this, {
                 trackFullscreen: true,
                 affectsStruts: true,
             });
         } else {
-            if (this.get_parent())
-                Main.layoutManager.removeChrome(this);
-            Main.layoutManager.addChrome(this);
+            Main.layoutManager.addChrome(this, {
+                trackFullscreen: true,
+                affectsStruts: false,
+            });
         }
 
         // Set the initial position.
@@ -747,6 +749,21 @@ const DockedDash = GObject.registerClass({
      * overview visibility
      */
     _updateDashVisibility() {
+        // GNOME 50: Chrome actors with affectsStruts can be hidden by the
+        // Shell during struts recalculation (overview, minimize, restack).
+        const panelBox = Main.layoutManager.panelBox;
+        if (panelBox && !panelBox.visible) {
+            panelBox.visible = true;
+            panelBox.show();
+        }
+
+        [this, this._slider, this._box, this.dash].forEach(actor => {
+            if (actor && !actor.visible) {
+                actor.visible = true;
+                actor.show();
+            }
+        });
+
         if (DockManager.settings.manualhide) {
             this._ignoreHover = true;
             this._removeAnimations();
@@ -801,6 +818,33 @@ const DockedDash = GObject.registerClass({
 
     _onOverviewHidden() {
         this.remove_style_class_name('overview');
+
+        // GNOME 50: panelBox.visible becomes false during the overview-to-desktop
+        // transition when an extension registers Chrome actors with affectsStruts.
+        const panelBox = Main.layoutManager.panelBox;
+        if (panelBox && !panelBox.visible) {
+            panelBox.visible = true;
+            panelBox.show();
+        }
+
+        // GNOME 50: same root cause hides dock actor tree.
+        if (!this.visible) {
+            this.visible = true;
+            this.show();
+        }
+        if (this._slider && !this._slider.visible) {
+            this._slider.visible = true;
+            this._slider.show();
+        }
+        if (this._box && !this._box.visible) {
+            this._box.visible = true;
+            this._box.show();
+        }
+        if (this.dash && !this.dash.visible) {
+            this.dash.visible = true;
+            this.dash.show();
+        }
+
         this._updateDashVisibility();
     }
 
@@ -970,7 +1014,7 @@ const DockedDash = GObject.registerClass({
                     DockManager.settings.showDelay * 1000,
                     this._dockDwellTimeout.bind(this));
                 GLib.Source.set_name_by_id(this._dockDwellTimeoutId,
-                    '[dash-to-dock] this._dockDwellTimeout');
+                    '[dash-2-x] this._dockDwellTimeout');
             }
             this._dockDwelling = true;
         } else {
@@ -1714,7 +1758,7 @@ export class DockManager {
         this._vfuncInjections = new Utils.VFuncInjectionsHandler(this);
         this._propertyInjections = new Utils.PropertyInjectionsHandler(this);
         this._settings = this._extension.getSettings(
-            'org.gnome.shell.extensions.dash-to-dock');
+            'org.gnome.shell.extensions.dash-2-x');
         this._appSwitcherSettings = new Gio.Settings({schema_id: 'org.gnome.shell.app-switcher'});
         this._mapSettingsValues();
 

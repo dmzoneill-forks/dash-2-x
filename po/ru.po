@@ -6,7 +6,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: dash-to-dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-08-30 10:20+0300\n"
 "PO-Revision-Date: 2024-08-30 10:34+0300\n"
@@ -129,7 +129,7 @@ msgstr[2] "Закрыть %d окон"
 #. can also translate the full message if this fits better your language.
 #: appIcons.js:1489
 #, javascript-format
-msgid "Dash to Dock %s"
+msgid "Dash 2 X %s"
 msgstr "Dash to Dock %s"
 
 #: appIcons.js:1489

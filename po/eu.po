@@ -125,7 +125,7 @@ msgstr[0] "Itxi leihoa"
 msgstr[1] "Itxi %d leihoak"
 
 #: appIcons.js:1560
-msgid "Dash to Dock"
+msgid "Dash 2 X"
 msgstr "Dash to Dock"
 
 #: appIcons.js:1562

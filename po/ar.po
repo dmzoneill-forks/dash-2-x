@@ -6,7 +6,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Dash to Dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-08-02 13:50+0300\n"
 "PO-Revision-Date: 2025-08-02 14:32+0300\n"
@@ -129,7 +129,7 @@ msgstr[4] "غادر %d نافذة"
 msgstr[5] "غادر %d نافذة"
 
 #: appIcons.js:1511
-msgid "Dash to Dock"
+msgid "Dash 2 X"
 msgstr "الشريط إلى المرسى"
 
 #: appIcons.js:1513

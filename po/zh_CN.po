@@ -9,7 +9,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Dash to Dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-04-09 22:29+0800\n"
 "PO-Revision-Date: 2025-04-09 22:31+0800\n"
@@ -85,7 +85,7 @@ msgstr "退出 %d 个窗口"
 #. can also translate the full message if this fits better your language.
 #: appIcons.js:1442
 #, javascript-format
-msgid "Dash to Dock %s"
+msgid "Dash 2 X %s"
 msgstr "Dash to Dock %s"
 
 #: locations.js:529

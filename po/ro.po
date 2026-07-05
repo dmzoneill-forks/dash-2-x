@@ -4,7 +4,7 @@
 # Rajat Jain <rajatjain01970@gmail.com>, 2026.
 msgid ""
 msgstr ""
-"Project-Id-Version: Dash to Dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-09-27 06:14+0200\n"
 "PO-Revision-Date: 2026-03-21 16:50+0530\n"
@@ -125,7 +125,7 @@ msgstr[2] "Închide %d de ferestre"
 #. can also translate the full message if this fits better your language.
 #: appIcons.js:1513
 #, javascript-format
-msgid "Dash to Dock %s"
+msgid "Dash 2 X %s"
 msgstr "Dash to Dock %s"
 
 #: appIcons.js:1513

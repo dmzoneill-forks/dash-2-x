@@ -8,7 +8,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Dash to Dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2022-05-24 21:07-0300\n"
 "PO-Revision-Date: 2022-05-24 22:08-0300\n"
@@ -128,7 +128,7 @@ msgstr[0] "Fechar %d janela"
 msgstr[1] "Fechar %d janelas"
 
 #: appIcons.js:1511
-msgid "Dash to Dock"
+msgid "Dash 2 X"
 msgstr "Dash to Dock"
 
 #: appIcons.js:1513
@@ -139,7 +139,7 @@ msgstr "Configurações"
 #. can also translate the full message if this fits better your language.
 #: appIcons.js:1336
 #, javascript-format
-msgid "Dash to Dock %s"
+msgid "Dash 2 X %s"
 msgstr "%s do Dash to Dock"
 
 #: locations.js:422

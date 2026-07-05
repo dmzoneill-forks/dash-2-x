@@ -5,7 +5,7 @@
 # Balázs Úr <ur.balazs at fsf dot hu>, 2017, 2022, 2023.
 msgid ""
 msgstr ""
-"Project-Id-Version: dash-to-dock master\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: https://github.com/micheleg/dash-to-dock/issues\n"
 "POT-Creation-Date: 2023-09-25 09:29+0200\n"
 "PO-Revision-Date: 2023-09-25 09:45+0200\n"
@@ -77,7 +77,7 @@ msgstr "%d ablak bezárása"
 #. can also translate the full message if this fits better your language.
 #: appIcons.js:1441
 #, javascript-format
-msgid "Dash to Dock %s"
+msgid "Dash 2 X %s"
 msgstr "„Dashből dokk” %s"
 
 #: locations.js:532

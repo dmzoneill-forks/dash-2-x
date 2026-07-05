@@ -4,7 +4,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Dash to Dock\n"
+"Project-Id-Version: Dash 2 X\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-03-12 09:36+0200\n"
 "PO-Revision-Date: 2026-03-12 09:45+0200\n"
@@ -123,7 +123,7 @@ msgstr[1] "Aizvērt %d logus"
 msgstr[2] "Aizvērt %d logu"
 
 #: appIcons.js:1554
-msgid "Dash to Dock"
+msgid "Dash 2 X"
 msgstr "Dash to Dock"
 
 #: appIcons.js:1556

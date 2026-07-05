@@ -2367,7 +2367,7 @@
             <child>
               <object class="GtkLabel" id="extension_name">
                 <property name="can_focus">0</property>
-                <property name="label">&lt;b&gt;Dash to Dock&lt;/b&gt;</property>
+                <property name="label">&lt;b&gt;Dash 2 X&lt;/b&gt;</property>
                 <property name="use_markup">1</property>
               </object>
             </child>
@@ -2413,7 +2413,7 @@
                 </child>
                 <child>
                   <object class="GtkLabel" id="label16">
-                    <property name="label">Michele (&lt;a href=&quot;mailto:micxgx@gmail.com&quot;&gt;micxgx@gmail.com&lt;/a&gt;)</property>
+                    <property name="label">Forked from Dash to Dock by Michele (&lt;a href=&quot;mailto:micxgx@gmail.com&quot;&gt;micxgx@gmail.com&lt;/a&gt;)</property>
                     <property name="use_markup">1</property>
                   </object>
                 </child>
@@ -2425,7 +2425,7 @@
                 <property name="receives_default">1</property>
                 <property name="halign">center</property>
 
-                <property name="uri">https://micheleg.github.io/dash-to-dock/</property>
+                <property name="uri">https://github.com/daoneill/dash-2-x</property>
               </object>
             </child>
             <child>

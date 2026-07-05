@@ -124,7 +124,7 @@ msgstr[0] "Stäng %d fönster"
 msgstr[1] "Stäng %d fönster"
 
 #: appIcons.js:1511
-msgid "Dash to Dock"
+msgid "Dash 2 X"
 msgstr "Dash to Dock"
 
 #: appIcons.js:1513
