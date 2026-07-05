@@ -255,8 +255,9 @@ const DockedDash = GObject.registerClass({
         // Create intellihide object to monitor windows overlapping
         this._intellihide = new Intellihide.Intellihide(this.monitorIndex);
 
-        // initialize dock state
-        this._dockState = State.HIDDEN;
+        // initialize dock state - must be consistent with slide_x initial value
+        // If not starting up, slide_x is 1 (visible), so state should be SHOWN
+        this._dockState = Main.layoutManager._startingUp ? State.HIDDEN : State.SHOWN;
 
         // Put dock on the required monitor
         this._monitor = Main.layoutManager.monitors[this.monitorIndex];
@@ -390,6 +391,8 @@ const DockedDash = GObject.registerClass({
         this.dash._container.connect('notify::allocation', this._updateStaticBox.bind(this));
         this._slider.connect(this._isHorizontal ? 'notify::x' : 'notify::y',
             this._updateStaticBox.bind(this));
+        this._slider.connect('notify::slide-x',
+            Main.layoutManager._queueUpdateRegions.bind(Main.layoutManager));
 
         // Load optional features that need to be activated for one dock only
         if (this.isMain)
@@ -480,6 +483,9 @@ const DockedDash = GObject.registerClass({
             this.connect('notify::height', () =>
                 (this.translation_y = -this.height));
         }
+
+        // Ensure staticBox is updated before visibility mode
+        this._updateStaticBox();
 
         this._updateVisibilityMode();
 
@@ -742,10 +748,13 @@ const DockedDash = GObject.registerClass({
             this._intellihideIsEnabled = settings.intellihide;
         }
 
-        if (this._autohideIsEnabled)
+        if (this._autohideIsEnabled) {
             this.add_style_class_name('autohide');
-        else
+            // Reset ignore hover when autohide is enabled
+            this._ignoreHover = false;
+        } else {
             this.remove_style_class_name('autohide');
+        }
 
         if (this._intellihideIsEnabled) {
             this._intellihide.enable();
@@ -829,6 +838,7 @@ const DockedDash = GObject.registerClass({
     }
 
     _onOverviewHiding() {
+        this._ignoreHover = false;
         this._intellihide.enable();
         this._updateDashVisibility();
     }
@@ -862,6 +872,10 @@ const DockedDash = GObject.registerClass({
             this.dash.show();
         }
 
+        this._box.sync_hover();
+        // Force intellihide to recheck overlap after overview is hidden
+        if (this._intellihideIsEnabled)
+            this._intellihide.forceUpdate();
         this._updateDashVisibility();
     }
 
@@ -1335,11 +1349,32 @@ const DockedDash = GObject.registerClass({
     }
 
     _updateStaticBox() {
+        // Base the static box on transformed coordinates, then normalize only the
+        // sliding axis so overlap checks always use the fully visible dock edge.
+        let [staticX, staticY] = this._box.get_transformed_position();
+        const width = this._box.width;
+        const height = this._box.height;
+
+        switch (this._position) {
+        case St.Side.LEFT:
+            staticX = this._monitor.x;
+            break;
+        case St.Side.RIGHT:
+            staticX = this._monitor.x + this._monitor.width - width;
+            break;
+        case St.Side.TOP:
+            staticY = this._monitor.y;
+            break;
+        case St.Side.BOTTOM:
+            staticY = this._monitor.y + this._monitor.height - height;
+            break;
+        }
+
         this._staticBox.init_rect(
-            this.x + this._slider.x - (this._position === St.Side.RIGHT ? this._box.width : 0),
-            this.y + this._slider.y - (this._position === St.Side.BOTTOM ? this._box.height : 0),
-            this._box.width,
-            this._box.height
+            staticX,
+            staticY,
+            width,
+            height
         );
 
         this._intellihide.updateTargetBox(this._staticBox);
