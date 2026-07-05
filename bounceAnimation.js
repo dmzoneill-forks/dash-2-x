@@ -17,9 +17,9 @@ import {
  * @param {Clutter.Actor} icon - The icon to animate
  */
 export function startBounceAnimation(icon) {
-    if (!icon) {
-        return;
-    }
+    if (!icon)
+        return null;
+
 
     const BOUNCE_HEIGHT = 18;
     const BOUNCE_DURATION = 260;
@@ -56,19 +56,19 @@ export function startBounceAnimation(icon) {
             originalParentIndex = children.indexOf(icon);
 
             // insert placeholder at the same position
-            if (originalParentIndex >= 0) {
+            if (originalParentIndex >= 0)
                 originalParent.insert_child_at_index(placeholder, originalParentIndex);
-            } else {
+            else
                 originalParent.add_child(placeholder);
-            }
+
 
             // listen to placeholder allocation changes to track dock reflows
             try {
                 placeholderConnActor = placeholder;
                 placeholderConnId = placeholder.connect('allocation-changed', () => {
                     try {
-                        const [px, py] = placeholder.get_transformed_position();
-                        const [currentX, currentY] = icon.get_position();
+                        const [px, py_] = placeholder.get_transformed_position();
+                        const [currentX_, currentY] = icon.get_position();
                         // sync icon position to follow placeholder when dock layout changes
                         icon.set_position(Math.round(px), currentY);
                     } catch (e) { /* ignore */ }
@@ -77,9 +77,9 @@ export function startBounceAnimation(icon) {
         }
 
         // reparent icon to Main.uiGroup for animation
-        if (originalParent) {
+        if (originalParent)
             originalParent.remove_child(icon);
-        }
+
         icon.set_position(Math.round(gx), Math.round(gy));
         Main.uiGroup.add_child(icon);
         target = icon;
@@ -89,34 +89,43 @@ export function startBounceAnimation(icon) {
     }
 
     function syncPositionToPlaceholder() {
-        if (!running || !placeholder || !icon || !originalParent) return;
+        if (!running || !placeholder || !icon || !originalParent)
+            return;
         try {
-            const [px, py] = placeholder.get_transformed_position();
-            const [currentX, currentY] = icon.get_position();
+            const [px, py_] = placeholder.get_transformed_position();
+            const [currentX_, currentY] = icon.get_position();
             // sync icon x position to follow placeholder when dock layout changes
             icon.set_position(Math.round(px), currentY);
         } catch (e) { /* ignore */ }
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => { syncPositionToPlaceholder(); return GLib.SOURCE_REMOVE; });
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+            syncPositionToPlaceholder();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     function step() {
-        if (!running) return;
+        if (!running)
+            return;
         bounceCount++;
-        try { target.remove_all_transitions(); } catch (e) { /* ignore */ }
+        try {
+            target.remove_all_transitions();
+        } catch (e) { /* ignore */ }
         target.ease({
             translation_y: -BOUNCE_HEIGHT,
             scale_y: 1.08,
             duration: Math.floor(BOUNCE_DURATION / 2),
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             onComplete: () => {
-                if (!running) return;
+                if (!running)
+                    return;
                 target.ease({
                     translation_y: 0,
                     scale_y: 1.0,
                     duration: Math.floor(BOUNCE_DURATION / 2),
                     mode: Clutter.AnimationMode.EASE_IN_QUAD,
                     onComplete: () => {
-                        if (!running) return;
+                        if (!running)
+                            return;
                         // Mark that we've completed at least one bounce
                         hasCompletedOneBounce = true;
 
@@ -134,7 +143,10 @@ export function startBounceAnimation(icon) {
                             cleanup();
                             return;
                         }
-                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => { step(); return GLib.SOURCE_REMOVE; });
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+                            step();
+                            return GLib.SOURCE_REMOVE;
+                        });
                     },
                 });
             },
@@ -146,7 +158,9 @@ export function startBounceAnimation(icon) {
             running = false;
             // disconnect placeholder allocation listener
             if (placeholderConnActor && placeholderConnId) {
-                try { placeholderConnActor.disconnect(placeholderConnId); } catch (e) { /* ignore */ }
+                try {
+                    placeholderConnActor.disconnect(placeholderConnId);
+                } catch (e) { /* ignore */ }
                 placeholderConnActor = null;
                 placeholderConnId = 0;
             }
@@ -154,9 +168,8 @@ export function startBounceAnimation(icon) {
             if (placeholder) {
                 try {
                     const parent = placeholder.get_parent();
-                    if (parent) {
+                    if (parent)
                         parent.remove_child(placeholder);
-                    }
                 } catch (e) { /* ignore */ }
                 placeholder = null;
             }
@@ -164,15 +177,14 @@ export function startBounceAnimation(icon) {
             if (originalParent && icon) {
                 try {
                     // ensure icon is removed from Main.uiGroup first
-                    if (Main.uiGroup.contains(icon)) {
+                    if (Main.uiGroup.contains(icon))
                         Main.uiGroup.remove_child(icon);
-                    }
+
                     // reparent back to original location
-                    if (originalParentIndex >= 0 && originalParentIndex < originalParent.get_n_children()) {
+                    if (originalParentIndex >= 0 && originalParentIndex < originalParent.get_n_children())
                         originalParent.insert_child_at_index(icon, originalParentIndex);
-                    } else {
+                    else
                         originalParent.add_child(icon);
-                    }
                 } catch (e) {
                     // ignore
                 }
@@ -203,17 +215,23 @@ export function startBounceAnimation(icon) {
             // We've completed at least one bounce, so stop immediately
             running = false;
             handle.isActive = false;
-            try { target.remove_all_transitions(); } catch (e) { /* ignore */ }
+            try {
+                target.remove_all_transitions();
+            } catch (e) { /* ignore */ }
             try {
                 target.ease({
                     translation_y: 0,
                     scale_y: 1.0,
                     duration: 120,
                     mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                    onComplete: () => { cleanup(); }
+                    onComplete: () => {
+                        cleanup();
+                    },
                 });
-            } catch (e) { cleanup(); }
-        }
+            } catch (e) {
+                cleanup();
+            }
+        },
     };
 
     return handle;

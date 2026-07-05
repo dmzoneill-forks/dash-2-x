@@ -16,7 +16,6 @@ import {
 } from './dependencies/shell/ui.js';
 
 import {
-    AppIcons,
     Docking,
     Theming,
     Utils,
@@ -1469,7 +1468,7 @@ class CategoryPanel {
         this._categoryData = categoryData;
         this._onClose = onClose;
 
-        const mainDock = Docking.DockManager.getDefault().mainDock;
+        const {mainDock} = Docking.DockManager.getDefault();
         this._iconSize = mainDock?.dash?.iconSize ?? 48;
         this._position = Utils.getPosition();
 
@@ -1553,7 +1552,7 @@ class CategoryPanel {
 
         const columns = Math.ceil(Math.sqrt(appCount));
         const rows = Math.ceil(appCount / columns);
-        const dash = mainDock.dash;
+        const {dash} = mainDock;
 
         for (let r = 0; r < rows; r++) {
             const rowBox = new St.BoxLayout({
@@ -1603,7 +1602,7 @@ class CategoryPanel {
     }
 
     _syncTheme() {
-        const mainDock = Docking.DockManager.getDefault().mainDock;
+        const {mainDock} = Docking.DockManager.getDefault();
         if (!mainDock)
             return;
 
@@ -1638,13 +1637,17 @@ class CategoryPanel {
         // Pivot-Point towards dock so the panel grows out of the icon
         switch (this._position) {
         case St.Side.BOTTOM:
-            this.actor.set_pivot_point(0.5, 1.0); break;
+            this.actor.set_pivot_point(0.5, 1.0);
+            break;
         case St.Side.TOP:
-            this.actor.set_pivot_point(0.5, 0.0); break;
+            this.actor.set_pivot_point(0.5, 0.0);
+            break;
         case St.Side.LEFT:
-            this.actor.set_pivot_point(0.0, 0.5); break;
+            this.actor.set_pivot_point(0.0, 0.5);
+            break;
         case St.Side.RIGHT:
-            this.actor.set_pivot_point(1.0, 0.5); break;
+            this.actor.set_pivot_point(1.0, 0.5);
+            break;
         default:
             this.actor.set_pivot_point(0.5, 1.0);
         }
@@ -1687,7 +1690,7 @@ class CategoryPanel {
         });
 
         // Close panel when dock hides — connect with delay
-        const mainDock = Docking.DockManager.getDefault().mainDock;
+        const {mainDock} = Docking.DockManager.getDefault();
         if (mainDock) {
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
                 if (!this.isOpen)

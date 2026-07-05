@@ -395,7 +395,7 @@ export const DockDash = GObject.registerClass({
         return Dash.Dash.prototype._clearEmptyDropTarget.call(this, ...args);
     }
 
-    handleDragOver(source, actor, x, y, time) {
+    handleDragOver(source, actor, x, y, _time) {
         const app = source?.app ?? source?._delegate?.app;
         if (!app)
             return DND.DragMotionResult.NO_DROP;
@@ -441,7 +441,8 @@ export const DockDash = GObject.registerClass({
 
             if (cursor >= start + margin && cursor <= start + size - margin) {
                 const childApp = clean[i].child?._delegate?.app;
-                if (!childApp || childApp === app) break;
+                if (!childApp || childApp === app)
+                    break;
                 const childIsCustom = !!childApp.isCustom;
 
                 // Valid targets:
@@ -481,7 +482,7 @@ export const DockDash = GObject.registerClass({
             // In RTL horizontal mode, icons are laid out right-to-left,
             // so cursor > mid means "before this icon". In vertical mode
             // or LTR, cursor <= mid means "before this icon".
-            const beforeIcon = (rtl && this._isHorizontal)
+            const beforeIcon = rtl && this._isHorizontal
                 ? cursor > mid
                 : cursor <= mid;
             if (beforeIcon) {
@@ -501,7 +502,8 @@ export const DockDash = GObject.registerClass({
                     let itemsBefore = 0;
                     for (let i = 0; i < insertPos; i++) {
                         const ca = clean[i].child?._delegate?.app;
-                        if (!ca || ca === app || ca._d2dIsTransient) continue;
+                        if (!ca || ca === app || ca._d2dIsTransient)
+                            continue;
                         itemsBefore++;
                     }
                     if (itemsBefore === currentOrderPos) {
@@ -558,7 +560,7 @@ export const DockDash = GObject.registerClass({
             : DND.DragMotionResult.COPY_DROP;
     }
 
-    acceptDrop(source, actor, x, y, time) {
+    acceptDrop(source, _actor, _x, _y, _time) {
         const app = source?.app ?? source?._delegate?.app;
         if (!app)
             return false;
@@ -586,39 +588,47 @@ export const DockDash = GObject.registerClass({
             const allChildren = this._box.get_children();
             let dockInsertIdx = 0;
             for (const child of allChildren) {
-                if (child === this._dropTargetIcon) break;
+                if (child === this._dropTargetIcon)
+                    break;
                 const ca = child.child?._delegate?.app;
-                if (ca && !ca._d2dIsTransient) dockInsertIdx++;
+                if (ca && !ca._d2dIsTransient)
+                    dockInsertIdx++;
             }
             this._dropTargetIcon = null;
             this._clearDragPlaceholder();
 
-            if (!targetApp) return false;
+            if (!targetApp)
+                return false;
             const targetIsCustom = !!targetApp.isCustom;
             const appId = app.get_id?.();
 
             if (!isCustom && !targetIsCustom && appId) {
                 // Regular + Regular -> create new category
                 const targetId = targetApp.get_id?.();
-                if (!targetId) return false;
+                if (!targetId)
+                    return false;
                 dockManager.createUserCategory(appId, targetId, dockInsertIdx);
                 const laters = global.compositor.get_laters();
                 laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
                     const favs = AppFavorites.getAppFavorites();
-                    if (appId in favs.getFavoriteMap()) favs.removeFavorite(appId);
-                    if (targetId in favs.getFavoriteMap()) favs.removeFavorite(targetId);
+                    if (appId in favs.getFavoriteMap())
+                        favs.removeFavorite(appId);
+                    if (targetId in favs.getFavoriteMap())
+                        favs.removeFavorite(targetId);
                     return GLib.SOURCE_REMOVE;
                 });
                 return true;
             } else if (!isCustom && targetIsCustom && appId) {
                 // Regular + Category -> add app to category
                 const catId = targetApp._categoryData?.id;
-                if (!catId) return false;
+                if (!catId)
+                    return false;
                 dockManager.addAppToUserCategory(catId, appId);
                 const laters = global.compositor.get_laters();
                 laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
                     const favs = AppFavorites.getAppFavorites();
-                    if (appId in favs.getFavoriteMap()) favs.removeFavorite(appId);
+                    if (appId in favs.getFavoriteMap())
+                        favs.removeFavorite(appId);
                     return GLib.SOURCE_REMOVE;
                 });
                 return true;
@@ -626,46 +636,58 @@ export const DockDash = GObject.registerClass({
                 // Category + Category -> merge
                 const srcId = app._categoryData?.id;
                 const tgtId = targetApp._categoryData?.id;
-                if (srcId && tgtId) dockManager.mergeUserCategories(srcId, tgtId);
+                if (srcId && tgtId)
+                    dockManager.mergeUserCategories(srcId, tgtId);
                 return true;
             }
 
             return false;
         }
 
-        if (!this._dragPlaceholder) return false;
+        if (!this._dragPlaceholder)
+            return false;
 
         const children = this._box.get_children();
-        if (children.indexOf(this._dragPlaceholder) === -1) return false;
+        if (children.indexOf(this._dragPlaceholder) === -1)
+            return false;
 
         // ── Build new dock-order from visual order ────────────────────────
         const catIdSet = new Set(dockManager.categoryIcons.map(ci => ci.config.id));
         const newDockOrder = [];
         for (const child of children) {
-            if (child === this._separator) break;
+            if (child === this._separator)
+                break;
             if (child === this._dragPlaceholder) {
                 const itemId = isCustom ? app._categoryData?.id : app.get_id?.();
-                if (itemId) newDockOrder.push(itemId);
+                if (itemId)
+                    newDockOrder.push(itemId);
             } else {
                 const childApp = child.child?._delegate?.app;
-                if (!childApp || childApp === app || childApp._d2dIsTransient) continue;
+                if (!childApp || childApp === app || childApp._d2dIsTransient)
+                    continue;
                 const itemId = childApp.isCustom
                     ? childApp._categoryData?.id
                     : childApp.get_id?.();
-                if (itemId) newDockOrder.push(itemId);
+                if (itemId)
+                    newDockOrder.push(itemId);
             }
         }
 
         // ── Drop from CategoryPanel (pull app out) ─────────────────────
         if (inCategoryId) {
             const appId = app.get_id?.();
-            if (!appId) { this._clearDragPlaceholder(); return false; }
+            if (!appId) {
+                this._clearDragPlaceholder();
+                return false;
+            }
 
             // favPos = number of non-category entries before appId in new order
             let favPos = 0;
             for (const id of newDockOrder) {
-                if (id === appId) break;
-                if (!catIdSet.has(id)) favPos++;
+                if (id === appId)
+                    break;
+                if (!catIdSet.has(id))
+                    favPos++;
             }
 
             dockManager.setDockOrder(newDockOrder);
@@ -692,7 +714,8 @@ export const DockDash = GObject.registerClass({
 
         // ── Regular favorite move / add ─────────────────────────────────
         const id = app.get_id?.();
-        if (!id || app.is_window_backed()) return false;
+        if (!id || app.is_window_backed())
+            return false;
 
         const favorites = AppFavorites.getAppFavorites();
         const favMap = favorites.getFavoriteMap();
@@ -706,13 +729,16 @@ export const DockDash = GObject.registerClass({
             return true;
         }
 
-        if (!global.settings.is_writable('favorite-apps')) return false;
+        if (!global.settings.is_writable('favorite-apps'))
+            return false;
 
         // favPos = number of non-category entries before id in new order
         let favPos = 0;
         for (const orderId of newDockOrder) {
-            if (orderId === id) break;
-            if (!catIdSet.has(orderId)) favPos++;
+            if (orderId === id)
+                break;
+            if (!catIdSet.has(orderId))
+                favPos++;
         }
 
         dockManager.setDockOrder(newDockOrder);
@@ -1437,7 +1463,7 @@ export const DockDash = GObject.registerClass({
             }
         }
 
-        let currentActors = this._box.get_children().filter(actor =>
+        const currentActors = this._box.get_children().filter(actor =>
             actor.child &&
             actor.child._delegate &&
             actor.child._delegate.app);

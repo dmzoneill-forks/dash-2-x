@@ -146,10 +146,10 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
         this._signalsHandler.add(this.app, 'windows-changed', () => this._updateWindows());
         this._signalsHandler.add(this.app, 'notify::state', () => this._updateRunningState());
-        this._signalsHandler.add(global.display, 'window-demands-attention', (_dpy, window) =>
-            this._onWindowDemandsAttention(window));
-        this._signalsHandler.add(global.display, 'window-marked-urgent', (_dpy, window) =>
-            this._onWindowDemandsAttention(window));
+        this._signalsHandler.add(global.display, 'window-demands-attention', (_dpy, win) =>
+            this._onWindowDemandsAttention(win));
+        this._signalsHandler.add(global.display, 'window-marked-urgent', (_dpy, win) =>
+            this._onWindowDemandsAttention(win));
 
         // In Wayland sessions, this signal is needed to track the state of windows dragged
         // from one monitor to another. As this is triggered quite often (whenever a new
@@ -571,9 +571,9 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
     activate(button) {
         // Prevent any action while bounce animation is in progress
-        if (this._bounceHandle?.isActive) {
+        if (this._bounceHandle?.isActive)
             return;
-        }
+
 
         const event = Clutter.get_current_event();
         let modifiers = event ? event.get_state() : 0;
@@ -1023,18 +1023,17 @@ export const DockAbstractAppIcon = GObject.registerClass({
      */
     animateLaunch() {
         // Prevent launching while bounce animation is in progress
-        if (this._bounceHandle?.isActive) {
+        if (this._bounceHandle?.isActive)
             return;
-        }
+
 
         // Call parent class animateLaunch if it exists
-        if (super.animateLaunch) {
+        if (super.animateLaunch)
             super.animateLaunch();
-        }
+
 
         // Add our bounce animation to the icon
         if (this.icon && this.icon._iconBin) {
-
             // Stop any previous bounce animation for this icon
             try {
                 if (this._bounceHandle) {
@@ -1047,9 +1046,9 @@ export const DockAbstractAppIcon = GObject.registerClass({
             }
 
             // Start a new bounce and keep the handle so we can stop it later
-            if (Docking.DockManager.settings.bounceIcons) {
+            if (Docking.DockManager.settings.bounceIcons)
                 this._bounceHandle = BounceAnimation.startBounceAnimation(this.icon._iconBin);
-            }
+
 
             // Add a temporary signal listener that stops the bounce once the app is RUNNING
             const bounceLabel = Symbol('bounce-animation');
@@ -1066,9 +1065,8 @@ export const DockAbstractAppIcon = GObject.registerClass({
                 } catch (e) {
                     logError(e);
                     // Clean up on error
-                    if (this._bounceHandle) {
+                    if (this._bounceHandle)
                         this._bounceHandle = null;
-                    }
                 }
             };
             try {
@@ -1088,6 +1086,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
                 }
             }
         } else {
+            // no action needed
         }
     }
 
@@ -1108,7 +1107,8 @@ export const DockAbstractAppIcon = GObject.registerClass({
         if (appWindows.length < 1)
             return;
 
-        if (shouldMinimize) appWindows.push('MINIMIZE');
+        if (shouldMinimize)
+            appWindows.push('MINIMIZE');
 
         if (recentlyClickedAppLoopId > 0)
             GLib.source_remove(recentlyClickedAppLoopId);

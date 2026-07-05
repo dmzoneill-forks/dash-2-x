@@ -50,7 +50,7 @@ const {gettext: __} = Extension;
 
 const {signals: Signals} = imports;
 
-const DOCK_DWELL_EDGE_PX = 2
+const DOCK_DWELL_EDGE_PX = 2;
 const DOCK_DWELL_CHECK_INTERVAL = 100;
 const ICON_ANIMATOR_DURATION = 3000;
 const STARTUP_ANIMATION_TIME = 500;
@@ -380,7 +380,7 @@ const DockedDash = GObject.registerClass({
         // Watch the panelBox (on the main dock only) and restore visibility
         // immediately whenever it is hidden outside the overview.
         if (this.isMain) {
-            const panelBox = Main.layoutManager.panelBox;
+            const {panelBox} = Main.layoutManager;
             if (panelBox) {
                 this._signalsHandler.add(panelBox, 'notify::visible', () => {
                     if (!panelBox.visible && !Main.overview.visibleTarget) {
@@ -627,9 +627,9 @@ const DockedDash = GObject.registerClass({
                 this.dash.setIconSize(settings.dashMaxIconSize);
             },
         ], [
-            settings, 
-            "changed::dock-margin-size", 
-            this._resetPosition.bind(this)
+            settings,
+            'changed::dock-margin-size',
+            this._resetPosition.bind(this),
         ], [
             settings,
             'changed::show-favorites',
@@ -843,7 +843,7 @@ const DockedDash = GObject.registerClass({
     _updateDashVisibility() {
         // GNOME 50: Chrome actors with affectsStruts can be hidden by the
         // Shell during struts recalculation (overview, minimize, restack).
-        const panelBox = Main.layoutManager.panelBox;
+        const {panelBox} = Main.layoutManager;
         if (panelBox && !panelBox.visible) {
             panelBox.visible = true;
             panelBox.show();
@@ -924,7 +924,7 @@ const DockedDash = GObject.registerClass({
 
         // GNOME 50: panelBox.visible becomes false during the overview-to-desktop
         // transition when an extension registers Chrome actors with affectsStruts.
-        const panelBox = Main.layoutManager.panelBox;
+        const {panelBox} = Main.layoutManager;
         if (panelBox && !panelBox.visible) {
             panelBox.visible = true;
             panelBox.show();
@@ -1380,7 +1380,11 @@ const DockedDash = GObject.registerClass({
         // Ensure variables linked to settings are updated.
         this._updateVisibilityMode();
 
-        const {dockFixed: fixedIsEnabled, dockExtended: extendHeight, dockMarginSize: margin} = DockManager.settings;
+        const {
+            dockFixed: fixedIsEnabled,
+            dockExtended: extendHeight,
+            dockMarginSize: margin,
+        } = DockManager.settings;
 
         if (fixedIsEnabled)
             this.add_style_class_name('fixed');
@@ -1466,8 +1470,8 @@ const DockedDash = GObject.registerClass({
         // Base the static box on transformed coordinates, then normalize only the
         // sliding axis so overlap checks always use the fully visible dock edge.
         let [staticX, staticY] = this._box.get_transformed_position();
-        const width = this._box.width;
-        const height = this._box.height;
+        const {width} = this._box;
+        const {height} = this._box;
 
         switch (this._position) {
         case St.Side.LEFT:
@@ -1710,11 +1714,11 @@ const KeyboardShortcuts = class DashToDockKeyboardShortcuts {
         this._gnomeKeysOverridden = false;
         this._savedGnomeKeys = [];
 
-        if (DockManager.settings.hotKeys) {
+        if (DockManager.settings.hotKeys)
             this._enableHotKeys();
-        } else {
+        else
             this._overrideGnomeKeys();
-        }
+
 
         this._signalsHandler.add([
             DockManager.settings,
@@ -2181,7 +2185,8 @@ export class DockManager {
      */
     _syncDockOrderWithFavorites() {
         const order = this._settings.get_strv('dock-order');
-        if (order.length === 0) return; // not yet migrated
+        if (order.length === 0)
+            return; // not yet migrated
 
         const catAppIds = new Set(this._readUserCategories().flatMap(c => c.apps));
         const validFavIds = new Set(
@@ -2275,7 +2280,8 @@ export class DockManager {
     addAppToUserCategory(categoryId, appId) {
         const configs = this._readUserCategories();
         const cat = configs.find(c => c.id === categoryId);
-        if (!cat) return;
+        if (!cat)
+            return;
         if (!cat.apps.includes(appId))
             cat.apps.push(appId);
         this._writeUserCategories(configs);
@@ -2291,7 +2297,8 @@ export class DockManager {
     removeAppFromUserCategory(categoryId, appId) {
         const configs = this._readUserCategories();
         const idx = configs.findIndex(c => c.id === categoryId);
-        if (idx < 0) return false;
+        if (idx < 0)
+            return false;
 
         const cat = configs[idx];
         cat.apps = cat.apps.filter(id => id !== appId);
@@ -2322,7 +2329,8 @@ export class DockManager {
                     const catAppIds = new Set(configs.flatMap(c => c.apps));
                     let favPos = 0;
                     for (const id of newOrder) {
-                        if (id === remaining) break;
+                        if (id === remaining)
+                            break;
                         if (!new Set(configs.map(c => c.id)).has(id) && !catAppIds.has(id))
                             favPos++;
                     }
@@ -2341,11 +2349,13 @@ export class DockManager {
      * to the target category, the source category is deleted.
      */
     mergeUserCategories(sourceCategoryId, targetCategoryId) {
-        if (sourceCategoryId === targetCategoryId) return;
+        if (sourceCategoryId === targetCategoryId)
+            return;
         const configs = this._readUserCategories();
         const src = configs.find(c => c.id === sourceCategoryId);
         const tgt = configs.find(c => c.id === targetCategoryId);
-        if (!src || !tgt) return;
+        if (!src || !tgt)
+            return;
 
         for (const appId of src.apps) {
             if (!tgt.apps.includes(appId))
