@@ -71,9 +71,9 @@ export function startBounceAnimation(icon) {
                         const [currentX_, currentY] = icon.get_position();
                         // sync icon position to follow placeholder when dock layout changes
                         icon.set_position(Math.round(px), currentY);
-                    } catch (_e) { /* ignore */ }
+                    } catch { /* ignore */ }
                 });
-            } catch (_e) { /* ignore */ }
+            } catch { /* ignore */ }
         }
 
         // reparent icon to Main.uiGroup for animation
@@ -83,7 +83,7 @@ export function startBounceAnimation(icon) {
         icon.set_position(Math.round(gx), Math.round(gy));
         Main.uiGroup.add_child(icon);
         target = icon;
-    } catch (_e) {
+    } catch {
         placeholder = null;
         target = icon;
     }
@@ -96,7 +96,7 @@ export function startBounceAnimation(icon) {
             const [currentX_, currentY] = icon.get_position();
             // sync icon x position to follow placeholder when dock layout changes
             icon.set_position(Math.round(px), currentY);
-        } catch (_e) { /* ignore */ }
+        } catch { /* ignore */ }
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
             syncPositionToPlaceholder();
             return GLib.SOURCE_REMOVE;
@@ -109,7 +109,7 @@ export function startBounceAnimation(icon) {
         bounceCount++;
         try {
             target.remove_all_transitions();
-        } catch (_e) { /* ignore */ }
+        } catch { /* ignore */ }
         target.ease({
             translation_y: -BOUNCE_HEIGHT,
             scale_y: 1.08,
@@ -160,7 +160,7 @@ export function startBounceAnimation(icon) {
             if (placeholderConnActor && placeholderConnId) {
                 try {
                     placeholderConnActor.disconnect(placeholderConnId);
-                } catch (_e) { /* ignore */ }
+                } catch { /* ignore */ }
                 placeholderConnActor = null;
                 placeholderConnId = 0;
             }
@@ -170,7 +170,7 @@ export function startBounceAnimation(icon) {
                     const parent = placeholder.get_parent();
                     if (parent)
                         parent.remove_child(placeholder);
-                } catch (_e) { /* ignore */ }
+                } catch { /* ignore */ }
                 placeholder = null;
             }
             // reparent icon back to original parent
@@ -185,7 +185,7 @@ export function startBounceAnimation(icon) {
                         originalParent.insert_child_at_index(icon, originalParentIndex);
                     else
                         originalParent.add_child(icon);
-                } catch (_e) {
+                } catch {
                     // ignore
                 }
                 originalParent = null;
@@ -194,11 +194,11 @@ export function startBounceAnimation(icon) {
             if (icon) {
                 try {
                     icon.reactive = wasReactive;
-                } catch (_e) {
+                } catch {
                     // ignore
                 }
             }
-        } catch (_e) { /* ignore */ }
+        } catch { /* ignore */ }
     }
 
     step();
@@ -217,7 +217,7 @@ export function startBounceAnimation(icon) {
             handle.isActive = false;
             try {
                 target.remove_all_transitions();
-            } catch (_e) { /* ignore */ }
+            } catch { /* ignore */ }
             try {
                 target.ease({
                     translation_y: 0,
@@ -228,7 +228,7 @@ export function startBounceAnimation(icon) {
                         cleanup();
                     },
                 });
-            } catch (_e) {
+            } catch {
                 cleanup();
             }
         },

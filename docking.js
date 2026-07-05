@@ -2213,7 +2213,7 @@ export class DockManager {
         try {
             const parsed = JSON.parse(this._settings.get_string('user-categories'));
             return Array.isArray(parsed) ? parsed : [];
-        } catch (_) {
+        } catch {
             return [];
         }
     }
@@ -2435,7 +2435,7 @@ export class DockManager {
         let configs = [];
         try {
             configs = JSON.parse(this._settings.get_string('user-categories'));
-        } catch (_) {}
+        } catch {}
         if (!Array.isArray(configs))
             configs = [];
 
