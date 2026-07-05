@@ -2953,8 +2953,12 @@ export class DockManager {
                     this._runStartupAnimation();
                     if (this._settings.disableOverviewOnStartup) {
                         this._propertyInjections.removeWithLabel(Labels.STARTUP_ANIMATION);
-                        Main.overview._overview.controls._stateAdjustment.value =
-                            OverviewControls.ControlsState.HIDDEN;
+                        // Guard: only reset state if overview is not currently
+                        // in a transition (SHOWING/HIDING) to avoid invalid
+                        // state machine transitions (SHOWING -> SHOWING).
+                        const adj = Main.overview._overview?.controls?._stateAdjustment;
+                        if (adj && !Main.overview.animationInProgress)
+                            adj.value = OverviewControls.ControlsState.HIDDEN;
                     }
                 });
         } else {
