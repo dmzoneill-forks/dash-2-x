@@ -2306,6 +2306,7 @@
                                           <item translatable="yes">Metro</item>
                                           <item translatable="yes">Binary</item>
                                           <item translatable="yes">Dot</item>
+                                          <item translatable="yes">None</item>
                                         </items>
                                       </object>
                                     </child>

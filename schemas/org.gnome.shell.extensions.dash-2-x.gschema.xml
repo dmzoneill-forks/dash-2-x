@@ -49,6 +49,7 @@
     <value value='7' nick='METRO'/>
     <value value='8' nick='BINARY'/>
     <value value='9' nick='DOT'/>
+    <value value='10' nick='NONE'/>
   </enum>
   <schema path="/org/gnome/shell/extensions/dash-2-x/" id="org.gnome.shell.extensions.dash-2-x">
     <key name="dock-position" enum="org.gnome.shell.extensions.dash-2-x.position">

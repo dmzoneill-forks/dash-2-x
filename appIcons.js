@@ -1457,6 +1457,44 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
                     });
                 }
             }
+
+            // Show Desktop File location
+            const desktopFilePath = appInfo?.get_filename?.();
+            if (desktopFilePath) {
+                this._appendSeparator();
+                const showDesktopFileItem = this._appendMenuItem(__('Show Desktop File'));
+                showDesktopFileItem.connect('activate', () => {
+                    const file = Gio.File.new_for_path(desktopFilePath);
+                    const parentDir = file.get_parent();
+                    if (parentDir) {
+                        try {
+                            // Use DBus to open the file manager highlighting the file
+                            Gio.DBus.get(Gio.BusType.SESSION, null,
+                                (o, res) => {
+                                    try {
+                                        const bus = Gio.DBus.get_finish(res);
+                                        bus.call(
+                                            'org.freedesktop.FileManager1',
+                                            '/org/freedesktop/FileManager1',
+                                            'org.freedesktop.FileManager1',
+                                            'ShowItems',
+                                            GLib.Variant.new('(ass)', [[file.get_uri()], '']),
+                                            null, 0, -1, null, null);
+                                    } catch {
+                                        // Fallback: open the parent directory
+                                        Gio.AppInfo.launch_default_for_uri(
+                                            parentDir.get_uri(), null);
+                                    }
+                                });
+                        } catch {
+                            // Fallback: open the parent directory
+                            Gio.AppInfo.launch_default_for_uri(
+                                parentDir.get_uri(), null);
+                        }
+                    }
+                    Main.overview.hide();
+                });
+            }
         }
 
         // dynamic menu
