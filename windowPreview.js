@@ -111,8 +111,25 @@ export class WindowPreviewMenu extends PopupMenu.PopupMenu {
 
             if (!this.isOpen) {
                 this.open(BoxPointer.PopupAnimation.FULL);
-                if (!this.fromHover)
-                    this.actor.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
+                if (!this.fromHover) {
+                    // Focus the preview item for the currently active window
+                    // instead of always focusing the first item, so that the
+                    // user sees the correct window highlighted.
+                    const focusWindow = global.display.focus_window;
+                    let focusTarget = null;
+                    if (focusWindow && this._previewBox) {
+                        const items = this._previewBox._getMenuItems()
+                            .filter(item => item._window);
+                        const activeItem = items.find(
+                            item => item._window === focusWindow);
+                        if (activeItem)
+                            focusTarget = activeItem;
+                    }
+                    if (focusTarget)
+                        focusTarget.grab_key_focus();
+                    else
+                        this.actor.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
+                }
             }
 
             this._source.emit('sync-tooltip');
