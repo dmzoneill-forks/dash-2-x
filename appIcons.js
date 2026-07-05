@@ -53,6 +53,8 @@ const tracker = Shell.WindowTracker.get_default();
 const Labels = Object.freeze({
     ISOLATE_MONITORS: Symbol('isolate-monitors'),
     ISOLATE_WORKSPACES: Symbol('isolate-workspaces'),
+    MENU_OVERVIEW: Symbol('menu-overview'),
+    PREVIEW_OVERVIEW: Symbol('preview-overview'),
     URGENT_WINDOWS: Symbol('urgent-windows'),
 });
 
@@ -166,7 +168,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
                 this._onWindowEntered.bind(this));
         }
 
-        this.connect('notify::running', () => {
+        this._signalsHandler.add(this, 'notify::running', () => {
             if (this.running)
                 this.add_style_class_name('running');
             else
@@ -174,7 +176,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
         });
         this.notify('running');
 
-        this.connect('notify::focused', () => {
+        this._signalsHandler.add(this, 'notify::focused', () => {
             if (this.focused)
                 this.add_style_class_name('focused');
             else
@@ -182,7 +184,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
         });
         this.notify('focused');
 
-        this.connect('notify::updating', () => {
+        this._signalsHandler.add(this, 'notify::updating', () => {
             if (this.updating)
                 this.add_style_class_name('updating');
             else
@@ -192,7 +194,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
         const {notificationsMonitor} = Docking.DockManager.getDefault();
 
-        this.connect('notify::urgent', () => {
+        this._signalsHandler.add(this, 'notify::urgent', () => {
             const icon = this.icon._iconBin;
             this._signalsHandler.removeWithLabel(Labels.URGENT_WINDOWS);
             if (this.urgent) {
@@ -550,12 +552,10 @@ export const DockAbstractAppIcon = GObject.registerClass({
                         `max-height: ${Math.round(maxMenuHeight / scaleFactor)}px;`;
                 }
             });
-            const id = Main.overview.connect('hiding', () => {
-                this._menu.close();
-            });
-            this._menu.actor.connect('destroy', () => {
-                Main.overview.disconnect(id);
-            });
+            this._signalsHandler.addWithLabel(Labels.MENU_OVERVIEW,
+                Main.overview, 'hiding', () => this._menu.close());
+            this._signalsHandler.add(this._menu.actor, 'destroy', () =>
+                this._signalsHandler.removeWithLabel(Labels.MENU_OVERVIEW));
 
             this._menuManager.addMenu(this._menu);
         }
@@ -855,12 +855,10 @@ export const DockAbstractAppIcon = GObject.registerClass({
                 if (!isPoppedUp)
                     this._onMenuPoppedDown();
             });
-            const id = Main.overview.connect('hiding', () => {
-                this._previewMenu.close();
-            });
-            this._previewMenu.actor.connect('destroy', () => {
-                Main.overview.disconnect(id);
-            });
+            this._signalsHandler.addWithLabel(Labels.PREVIEW_OVERVIEW,
+                Main.overview, 'hiding', () => this._previewMenu.close());
+            this._signalsHandler.add(this._previewMenu.actor, 'destroy', () =>
+                this._signalsHandler.removeWithLabel(Labels.PREVIEW_OVERVIEW));
         }
 
         this.emit('menu-state-changed', !this._previewMenu.isOpen);
