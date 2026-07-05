@@ -662,6 +662,10 @@ const DockSettings = GObject.registerClass({
             this._builder.get_object('show_running_switch'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('group-apps',
+            this._builder.get_object('ungroup_applications_button'),
+            'active',
+            Gio.SettingsBindFlags.INVERT_BOOLEAN);
         const applicationButtonIsolationButton =
             this._builder.get_object('application_button_isolation_button');
         this._settings.bind('isolate-workspaces',
@@ -742,6 +746,15 @@ const DockSettings = GObject.registerClass({
             this._builder.get_object('hide_tooltip_switch'),
             'active',
             Gio.SettingsBindFlags.DEFAULT);
+        const tooltipMaxWidthSpin = this._builder.get_object('tooltip_max_width_spinbutton');
+        tooltipMaxWidthSpin.set_value(this._settings.get_int('tooltip-max-width-percent'));
+        tooltipMaxWidthSpin.connect('value-changed', widget => {
+            this._settings.set_int('tooltip-max-width-percent', widget.get_value_as_int());
+        });
+        this._settings.bind('hide-tooltip',
+            this._builder.get_object('tooltip_max_width_row'),
+            'sensitive',
+            Gio.SettingsBindFlags.INVERT_BOOLEAN);
         this._settings.bind('show-previews-hover',
             this._builder.get_object('preview_hover_switch'),
             'active',

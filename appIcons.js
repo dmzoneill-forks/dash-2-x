@@ -7,6 +7,7 @@ import {
     GObject,
     Meta,
     Mtk,
+    Pango,
     Shell,
     St,
 } from './dependencies/gi.js';
@@ -41,6 +42,7 @@ import {Extension} from './dependencies/shell/extensions/extension.js';
 // Use __ () and N__() for the extension gettext domain, and reuse
 // the shell domain with the default _() and N_()
 const {gettext: __, ngettext} = Extension;
+const MAX_TOOLTIP_LABEL_WIDTH_PX = 700;
 
 const DBusMenu = await DBusMenuUtils.haveDBusMenu();
 
@@ -124,11 +126,12 @@ export const DockAbstractAppIcon = GObject.registerClass({
     },
 }, class DockAbstractAppIcon extends Dash.DashIcon {
     // settings are required inside.
-    _init(app, monitorIndex, iconAnimator) {
+    _init(app, monitorIndex, iconAnimator, window = null) {
         super._init(app);
 
         // a prefix is required to avoid conflicting with the parent class variable
         this.monitorIndex = monitorIndex;
+        this.window = window;
         this._signalsHandler = new Utils.GlobalSignalsHandler(this);
         this.iconAnimator = iconAnimator;
         this._indicator = new AppIconIndicators.AppIconIndicator(this);
@@ -264,6 +267,9 @@ export const DockAbstractAppIcon = GObject.registerClass({
     }
 
     ownsWindow(window) {
+        if (this.window)
+            return this.window === window;
+
         return this.app === tracker.get_window_app(window);
     }
 
@@ -359,7 +365,9 @@ export const DockAbstractAppIcon = GObject.registerClass({
     }
 
     _updateFocusState() {
-        this.focused = tracker.focus_app === this.app && this.running;
+        this.focused = (this.window
+            ? global.display.focus_window === this.window
+            : tracker.focus_app === this.app) && this.running;
     }
 
     _updateUrgentWindows(interestingWindows) {
@@ -1087,6 +1095,9 @@ export const DockAbstractAppIcon = GObject.registerClass({
     }
 
     getWindows() {
+        if (this.window)
+            return this.window.get_compositor_private() ? [this.window] : [];
+
         return this.app.get_windows();
     }
 
@@ -1109,10 +1120,15 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
 const DockAppIcon = GObject.registerClass({
 }, class DockAppIcon extends DockAbstractAppIcon {
-    _init(app, monitorIndex, iconAnimator) {
-        super._init(app, monitorIndex, iconAnimator);
+    _init(app, monitorIndex, iconAnimator, window = null) {
+        super._init(app, monitorIndex, iconAnimator, window);
 
-        this._signalsHandler.add(tracker, 'notify::focus-app', () => this._updateFocusState());
+        if (window) {
+            this._signalsHandler.add(global.display, 'notify::focus-window',
+                () => this._updateFocusState());
+        } else {
+            this._signalsHandler.add(tracker, 'notify::focus-app', () => this._updateFocusState());
+        }
     }
 });
 
@@ -1153,11 +1169,11 @@ const DockLocationAppIcon = GObject.registerClass({
  * @param monitorIndex
  * @param iconAnimator
  */
-export function makeAppIcon(app, monitorIndex, iconAnimator) {
+export function makeAppIcon(app, monitorIndex, iconAnimator, window = null) {
     if (app.appInfo instanceof Locations.LocationAppInfo)
         return new DockLocationAppIcon(app, monitorIndex, iconAnimator);
 
-    return new DockAppIcon(app, monitorIndex, iconAnimator);
+    return new DockAppIcon(app, monitorIndex, iconAnimator, window);
 }
 
 /**
@@ -1729,6 +1745,7 @@ export function itemShowLabel() {
         return;
 
     this.label.set_text(this._labelText);
+    this.label.set_width(-1);
     this.label.opacity = 0;
     this.label.show();
 
@@ -1738,6 +1755,15 @@ export function itemShowLabel() {
     const itemWidth  = this.allocation.x2 - this.allocation.x1;
     const itemHeight = this.allocation.y2 - this.allocation.y1;
 
+    const monitor = Main.layoutManager.findMonitorForActor(this);
+    const widthPercent = Math.max(20, Math.min(100,
+        Docking.DockManager.settings.tooltipMaxWidthPercent || 60));
+    const maxLabelWidth = Math.min(
+        Math.floor(monitor.width * widthPercent / 100),
+        MAX_TOOLTIP_LABEL_WIDTH_PX);
+    const naturalLabelWidth = this.label.get_width();
+    this.label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    this.label.set_width(naturalLabelWidth > maxLabelWidth ? maxLabelWidth : -1);
     const labelWidth = this.label.get_width();
     const labelHeight = this.label.get_height();
 
@@ -1777,7 +1803,6 @@ export function itemShowLabel() {
 
     // Leave a few pixel gap
     const gap = 5;
-    const monitor = Main.layoutManager.findMonitorForActor(this);
     if (x - monitor.x < gap)
         x += monitor.x - x + labelOffset;
     else if (x + labelWidth > monitor.x + monitor.width - gap)

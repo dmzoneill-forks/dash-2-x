@@ -519,8 +519,8 @@ export const DockDash = GObject.registerClass({
         }
     }
 
-    _createAppItem(app) {
-        const appIcon = new AppIcons.makeAppIcon(app, this._monitorIndex, this.iconAnimator);
+    _createAppItem(app, window = null) {
+        const appIcon = new AppIcons.makeAppIcon(app, this._monitorIndex, this.iconAnimator, window);
 
         if (appIcon._draggable) {
             appIcon._draggable.connect('drag-begin', () => {
@@ -571,7 +571,21 @@ export const DockDash = GObject.registerClass({
         // Override default AppIcon label_actor, now the
         // accessible_name is set at DashItemContainer.setLabelText
         appIcon.label_actor = null;
-        item.setLabelText(app.get_name());
+        item.setLabelText(window?.title || app.get_name());
+        if (window) {
+            const titleChangedId = window.connect('notify::title', () => {
+                if (window.get_compositor_private())
+                    item.setLabelText(window.title || app.get_name());
+                else
+                    item.setLabelText(app.get_name());
+
+                appIcon.emit('sync-tooltip');
+            });
+            item.connect('destroy', () => {
+                if (titleChangedId && window)
+                    window.disconnect(titleChangedId);
+            });
+        }
 
         appIcon.icon.setIconSize(this.iconSize);
         this._hookUpLabel(item, appIcon);
@@ -897,45 +911,65 @@ export const DockDash = GObject.registerClass({
                    actor.child._delegate &&
                    actor.child._delegate.app;
         });
-        // Apps currently in the dash
-        let oldApps = children.map(actor => actor.child._delegate.app);
-        // Apps supposed to be in the dash
-        const newApps = [];
-
-        const {showFavorites} = settings;
-        if (showFavorites)
-            newApps.push(...Object.values(favorites));
-
-        // n running apps that are not pinned to favorites 
-        let nRunning = 0;
+        const oldItems = children.map(actor => actor.child._delegate);
+        const oldRunningApps = [];
+        oldItems.forEach(({app}) => {
+            if (running.includes(app) && !oldRunningApps.includes(app))
+                oldRunningApps.push(app);
+        });
+        const orderedRunningApps = [];
 
         if (settings.showRunning) {
-            // We reorder the running apps so that they don't change position on the
-            // dash with every redisplay() call
-
-            // First: add the apps from the oldApps list that are still running
-            oldApps.forEach(oldApp => {
-                // prevent location apps from moving
-                if (!this._isLocationApp(oldApp)) {
-                    const index = running.indexOf(oldApp);
-                    if (index > -1) {
-                        const [app] = running.splice(index, 1);
-                        if (!showFavorites || !(app.get_id() in favorites)) {
-                            newApps.push(app);
-                            nRunning++;
-                        }
-                    }
+            // We reorder running apps so that items don't churn on every redisplay().
+            oldRunningApps.forEach(oldApp => {
+                const index = running.indexOf(oldApp);
+                if (index > -1) {
+                    const [app] = running.splice(index, 1);
+                    orderedRunningApps.push(app);
                 }
             });
 
-            // Second: add the new apps
-            running.forEach(app => {
-                if (!this._isLocationApp(app)) {
-                    if ((!showFavorites || !(app.get_id() in favorites)) && !(app.get_windows()[0].get_title() === 'wl-clipboard')) {
-                        newApps.push(app);
-                        nRunning++;
-                    }
-                }
+            orderedRunningApps.push(...running);
+        }
+
+        const expectedItems = [];
+        const appendAppItems = (app, {isFavorite = false, canSplit = true} = {}) => {
+            const windows = canSplit
+                ? AppIcons.getInterestingWindows(app.get_windows(), this._monitorIndex)
+                    .sort((a, b) => a.get_stable_sequence() - b.get_stable_sequence())
+                : [];
+            const shouldSplit = !settings.groupApps && canSplit && windows.length > 0;
+
+            if (shouldSplit) {
+                windows.forEach(window => {
+                    expectedItems.push({
+                        app,
+                        window,
+                        isFavorite,
+                    });
+                });
+            } else {
+                expectedItems.push({
+                    app,
+                    window: null,
+                    isFavorite,
+                });
+            }
+        };
+
+        const {showFavorites} = settings;
+        if (showFavorites) {
+            Object.values(favorites).forEach(app =>
+                appendAppItems(app, {
+                    isFavorite: true,
+                    canSplit: settings.showRunning,
+                }));
+        }
+
+        if (settings.showRunning) {
+            orderedRunningApps.forEach(app => {
+                if (!showFavorites || !(app.get_id() in favorites))
+                    appendAppItems(app);
             });
         }
 
@@ -944,112 +978,53 @@ export const DockDash = GObject.registerClass({
             this._signalsHandler.addWithLabel(Labels.SHOW_MOUNTS,
                 dockManager.removables, 'changed', this._queueRedisplay.bind(this));
             dockManager.removables.getApps().forEach(removable => {
-                if (!newApps.includes(removable))
-                    newApps.push(removable);
+                if (!expectedItems.some(item => item.app === removable)) {
+                    expectedItems.push({
+                        app: removable,
+                        window: null,
+                        isFavorite: false,
+                    });
+                }
             });
-        } else {
-            oldApps = oldApps.filter(app => !app.location || app.isTrash);
         }
 
         if (dockManager.trash) {
             const trashApp = dockManager.trash.getApp();
-            if (!newApps.includes(trashApp))
-                newApps.push(trashApp);
-        } else {
-            oldApps = oldApps.filter(app => !app.isTrash);
+            if (!expectedItems.some(item => item.app === trashApp)) {
+                expectedItems.push({
+                    app: trashApp,
+                    window: null,
+                    isFavorite: false,
+                });
+            }
         }
 
         // Temporary remove the separators so that we don't compute to position icons
-        const oldSeparatorFavoritesPos = this._box.get_children().indexOf(this._separatorFavorites);
         if (this._separatorFavorites)
             this._box.remove_child(this._separatorFavorites);
         if (this._separatorLocations)
             this._box.remove_child(this._separatorLocations);
 
-        // Figure out the actual changes to the list of items; we iterate
-        // over both the list of items currently in the dash and the list
-        // of items expected there, and collect additions and removals.
-        // Moves are both an addition and a removal, where the order of
-        // the operations depends on whether we encounter the position
-        // where the item has been added first or the one from where it
-        // was removed.
-        // There is an assumption that only one item is moved at a given
-        // time; when moving several items at once, everything will still
-        // end up at the right position, but there might be additional
-        // additions/removals (e.g. it might remove all the launchers
-        // and add them back in the new order even if a smaller set of
-        // additions and removals is possible).
-        // If above assumptions turns out to be a problem, we might need
-        // to use a more sophisticated algorithm, e.g. Longest Common
-        // Subsequence as used by diff.
-
-
-        let nLocationApps = 0;
+        // Figure out the actual changes to the list of items; we use a
+        // match-based approach that handles both app-level and per-window
+        // items correctly when ungrouping is enabled.
 
         const addedItems = [];
         const removedActors = [];
+        const itemMatches = (delegate, expectedItem) =>
+            delegate.app === expectedItem.app &&
+            (delegate.window ?? null) === (expectedItem.window ?? null);
 
-        let newIndex = 0;
-        let oldIndex = 0;
-        while (newIndex < newApps.length || oldIndex < oldApps.length) {
-            const oldApp = oldApps.length > oldIndex ? oldApps[oldIndex] : null;
-            const newApp = newApps.length > newIndex ? newApps[newIndex] : null;
-
-            // No change at oldIndex/newIndex
-            if (oldApp === newApp) {
-                oldIndex++;
-                newIndex++;
-                if (this._isLocationApp(oldApp))
-                    nLocationApps++;
-                continue;
-            }
-
-            // App removed at oldIndex
-            if (oldApp && !newApps.includes(oldApp)) {
-                removedActors.push(children[oldIndex]);
-                oldIndex++;
-                continue;
-            }
-
-            // App added at newIndex
-            if (newApp && !oldApps.includes(newApp)) {
-                addedItems.push({
-                    app: newApp,
-                    item: this._createAppItem(newApp),
-                    pos: newIndex,
-                });
-                if (this._isLocationApp(newApp))
-                    nLocationApps++;
-                newIndex++;
-                continue;
-            }
-
-            // App moved
-            const nextApp = newApps.length > newIndex + 1
-                ? newApps[newIndex + 1] : null;
-            const insertHere = nextApp && nextApp === oldApp;
-            const alreadyRemoved = removedActors.reduce((result, actor) => {
-                const removedApp = actor.child._delegate.app;
-                return result || removedApp === newApp;
-            }, false);
-
-            if (insertHere || alreadyRemoved) {
-                const newItem = this._createAppItem(newApp);
-                addedItems.push({
-                    app: newApp,
-                    item: newItem,
-                    pos: newIndex + removedActors.length,
-                });
-                newIndex++;
+        const expectedUsed = new Array(expectedItems.length).fill(false);
+        for (let i = children.length - 1; i >= 0; i--) {
+            const delegate = children[i].child._delegate;
+            const matchIndex = expectedItems.findIndex((expectedItem, idx) =>
+                !expectedUsed[idx] && itemMatches(delegate, expectedItem));
+            if (matchIndex < 0) {
+                removedActors.push(children[i]);
             } else {
-                removedActors.push(children[oldIndex]);
-                oldIndex++;
+                expectedUsed[matchIndex] = true;
             }
-        }
-
-        for (let i = 0; i < addedItems.length; i++) {
-            this._box.insert_child_at_index(addedItems[i].item,
-                addedItems[i].pos);
         }
 
         for (let i = 0; i < removedActors.length; i++) {
@@ -1063,27 +1038,35 @@ export const DockDash = GObject.registerClass({
                 item.destroy();
         }
 
-        /* Update separator for favorites */
+        let currentActors = this._box.get_children().filter(actor =>
+            actor.child &&
+            actor.child._delegate &&
+            actor.child._delegate.app);
 
-        const nFavorites = Object.keys(favorites).length;
-        const nIcons = children.length + addedItems.length - removedActors.length;
+        for (let i = 0; i < expectedItems.length; i++) {
+            const expectedItem = expectedItems[i];
+            const matchIndex = currentActors.findIndex((actor, idx) =>
+                idx >= i && itemMatches(actor.child._delegate, expectedItem));
 
-        let posFavorites = nFavorites + this._animatingPlaceholdersCount;
-        if (this._dragPlaceholder)
-            posFavorites++;
-        const removedFavorites = removedActors.filter(a =>
-            children.indexOf(a) < oldSeparatorFavoritesPos);
+            if (matchIndex < 0) {
+                const item = this._createAppItem(expectedItem.app, expectedItem.window);
+                this._box.insert_child_at_index(item, i);
+                currentActors.splice(i, 0, item);
+                addedItems.push({item});
+            } else if (matchIndex !== i) {
+                const [item] = currentActors.splice(matchIndex, 1);
+                this._box.remove_child(item);
+                this._box.insert_child_at_index(item, i);
+                currentActors.splice(i, 0, item);
+            }
+        }
 
-        // Workaround: when a favorite app (running) located exactly one slot above the separator
-        // is unpinned, its icon does not automatically move below the separator.
-        // Fixes issue: https://github.com/micheleg/dash-to-dock/issues/2445
-        if (!removedFavorites.some(a =>
-            oldSeparatorFavoritesPos - children.indexOf(a) === 1))
-            posFavorites += removedFavorites.length;
-
+        // Update separator
+        const nFavorites = expectedItems.filter(item => item.isFavorite).length;
+        const nIcons = currentActors.length;
         if (nFavorites > 0 && nFavorites < nIcons) {
             this._separatorFavorites =
-                this._ensureSeparator(this._separatorFavorites, posFavorites);
+                this._ensureSeparator(this._separatorFavorites, nFavorites);
         } else if (this._separatorFavorites) {
             this._separatorFavorites.destroy();
             this._separatorFavorites = null;
@@ -1091,9 +1074,11 @@ export const DockDash = GObject.registerClass({
 
         /* Update separator for locations */
 
-        // it is easier to calculate the locations separator position
-        // since all the location apps are pinned at the very bottom
-        // and doesn't move around
+        // Count location apps among expected items
+        const nLocationApps = expectedItems.filter(item =>
+            this._isLocationApp(item.app)).length;
+        const nRunning = expectedItems.filter(item =>
+            !item.isFavorite && !this._isLocationApp(item.app)).length;
         const posLocations = this._box.get_n_children() - nLocationApps;
         const isRedudantSeparator = nRunning <= 0;
         if (nLocationApps > 0 && nLocationApps < nIcons && !isRedudantSeparator) {
