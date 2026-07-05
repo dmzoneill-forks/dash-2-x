@@ -3,6 +3,7 @@
 import {
     Clutter,
     Cogl,
+    GLib,
     GObject,
     Meta,
     St,
@@ -437,6 +438,10 @@ class Transparency {
 
     destroy() {
         this.disable();
+        if (this._solidStyleUpdateId) {
+            GLib.source_remove(this._solidStyleUpdateId);
+            this._solidStyleUpdateId = 0;
+        }
         this._signalsHandler.destroy();
     }
 
@@ -460,18 +465,34 @@ class Transparency {
     }
 
     _updateSolidStyle() {
-        const isNear = this._dockIsNear();
-        if (isNear) {
-            this._backgroundActor.set_style(this._opaque_style);
-            this._dockActor.remove_style_class_name('transparent');
-            this._dockActor.add_style_class_name('opaque');
-        } else {
-            this._backgroundActor.set_style(this._transparent_style);
-            this._dockActor.remove_style_class_name('opaque');
-            this._dockActor.add_style_class_name('transparent');
-        }
+        // Debounce: rapid window allocation changes (e.g. from wallpaper
+        // changers like Variety) can fire hundreds of notify::allocation
+        // signals per second.  Coalesce them into a single idle callback
+        // to avoid overwhelming the compositor's style/layout pipeline,
+        // which could freeze or crash the GUI (#111).
+        if (this._solidStyleUpdateId)
+            return;
 
-        this.emit('solid-style-updated', isNear);
+        this._solidStyleUpdateId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._solidStyleUpdateId = 0;
+
+            if (!this._dockActor?.get_stage())
+                return GLib.SOURCE_REMOVE;
+
+            const isNear = this._dockIsNear();
+            if (isNear) {
+                this._backgroundActor.set_style(this._opaque_style);
+                this._dockActor.remove_style_class_name('transparent');
+                this._dockActor.add_style_class_name('opaque');
+            } else {
+                this._backgroundActor.set_style(this._transparent_style);
+                this._dockActor.remove_style_class_name('opaque');
+                this._dockActor.add_style_class_name('transparent');
+            }
+
+            this.emit('solid-style-updated', isNear);
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _dockIsNear() {
