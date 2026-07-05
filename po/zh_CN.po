@@ -665,6 +665,11 @@ msgstr "显示超时时间（秒）"
 msgid "Pressure threshold"
 msgstr "压力阈值"
 
+#: docking.js:2514 appIcons.js:1177
+msgid "Unpin"
+msgstr "取消固定"
+
+#: docking.js:2514 appIcons.js:1183
 msgid "Pin to Dock"
 msgstr "固定到 Dock"
 
