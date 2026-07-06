@@ -1164,7 +1164,6 @@ function makeLocationApp(params) {
         fallbackIconName,
     }));
 
-    // FIXME: We need to add a new API to Nautilus to open new windows
     shellApp._mi('can_open_new_window', () => {
         try {
             if (!shellApp.get_n_windows())
@@ -1178,13 +1177,7 @@ function makeLocationApp(params) {
             if (handlerApp.has_key('X-GNOME-SingleWindow'))
                 return !handlerApp.get_boolean('X-GNOME-SingleWindow');
 
-            if (handlerApp.get_commandline()?.split(' ').includes('--new-window'))
-                return true;
-
-            const [window] = shellApp.get_windows();
-            if (window && window.get_gtk_window_object_path())
-                return window.get_gtk_application_id() === null;
-
+            // We can always open a new window via --new-window or gio open
             return true;
         } catch {
             return false;
@@ -1194,16 +1187,40 @@ function makeLocationApp(params) {
     shellApp._mi('open_new_window', function (_om, workspace) {
         /* eslint-disable no-invalid-this */
         const context = global.create_app_launch_context(0, workspace);
+        const uri = this.appInfo.location?.get_uri();
         if (!this.get_n_windows()) {
             this.appInfo.launch([], context);
             return;
         }
-        const appId = this.appInfo.get_id();
-        Gio.AppInfo.create_from_commandline(this.appInfo.get_commandline(),
-            this.appInfo.get_id(), appId
-                ? Gio.AppInfoCreateFlags.SUPPORTS_STARTUP_NOTIFICATION
-                : Gio.AppInfoCreateFlags.NONE).launch_uris(
-            [this.appInfo.location.get_uri()], context);
+
+        // Try the handler app's executable with --new-window first,
+        // falling back to gio open for any handler that doesn't support it
+        try {
+            const handlerApp = this.appInfo.getHandlerApp();
+            const commandline = handlerApp?.get_commandline();
+            if (commandline) {
+                const [executable] = commandline.split(/\s+/).filter(a => a);
+                const subprocess = new Gio.Subprocess({
+                    argv: [executable, '--new-window', uri],
+                    flags: Gio.SubprocessFlags.NONE,
+                });
+                subprocess.init(null);
+                return;
+            }
+        } catch {
+            // Handler app not available or launch failed
+        }
+
+        // Fallback: use gio open which delegates to the default handler
+        try {
+            const subprocess = new Gio.Subprocess({
+                argv: ['gio', 'open', uri],
+                flags: Gio.SubprocessFlags.NONE,
+            });
+            subprocess.init(null);
+        } catch (e) {
+            logError(e, 'Failed to open new window for %s'.format(uri));
+        }
         /* eslint-enable no-invalid-this */
     });
 
