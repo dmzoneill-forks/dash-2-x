@@ -40,6 +40,7 @@ import {
     LauncherAPI,
     Locations,
     NotificationsMonitor,
+    PinnedCommands,
     Theming,
     Utils,
 } from './imports.js';
@@ -2160,6 +2161,10 @@ export class DockManager {
         return this._trash;
     }
 
+    get pinnedCommandsManager() {
+        return this._pinnedCommandsManager;
+    }
+
     get categoryIcons() {
         return this._categoryIcons ?? [];
     }
@@ -2475,6 +2480,16 @@ export class DockManager {
         }
         // ───────────────────────────────────────────────────────────
 
+        // ── Pinned Commands ─────────────────────────────────────────
+        if (this.settings.showPinnedCommands) {
+            if (!this._pinnedCommandsManager)
+                this._pinnedCommandsManager = new PinnedCommands.PinnedCommandsManager();
+        } else if (this._pinnedCommandsManager) {
+            this._pinnedCommandsManager.destroy();
+            this._pinnedCommandsManager = null;
+        }
+        // ───────────────────────────────────────────────────────────
+
         Locations.unWrapFileManagerApp();
         [this._methodInjections, this._propertyInjections].forEach(
             injections => injections.removeWithLabel(Labels.LOCATIONS));
@@ -2642,6 +2657,19 @@ export class DockManager {
             'changed::user-categories',
             () => {
                 this._ensureLocations();
+                DockManager.allDocks.forEach(dock => dock.dash._queueRedisplay());
+            },
+        ], [
+            this._settings,
+            'changed::show-pinned-commands',
+            () => {
+                this._ensureLocations();
+                DockManager.allDocks.forEach(dock => dock.dash.resetAppIcons());
+            },
+        ], [
+            this._settings,
+            'changed::pinned-commands',
+            () => {
                 DockManager.allDocks.forEach(dock => dock.dash._queueRedisplay());
             },
         ], [
@@ -3203,6 +3231,8 @@ export class DockManager {
         this._appSpread.destroy();
         this._trash?.destroy();
         this._trash = null;
+        this._pinnedCommandsManager?.destroy();
+        this._pinnedCommandsManager = null;
         this._categoryIcons?.forEach(ci => ci.destroy());
         this._categoryIcons = [];
         Locations.unWrapFileManagerApp();
