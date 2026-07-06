@@ -450,6 +450,16 @@ export const DockDash = GObject.registerClass({
             this._quickSettingsButton = null;
         }
 
+        if (this._redisplayDebounceId) {
+            GLib.source_remove(this._redisplayDebounceId);
+            this._redisplayDebounceId = 0;
+        }
+
+        if (this._resetIconsDebounceId) {
+            GLib.source_remove(this._resetIconsDebounceId);
+            this._resetIconsDebounceId = 0;
+        }
+
         if (this._requiresVisibilityTimeout) {
             GLib.source_remove(this._requiresVisibilityTimeout);
             delete this._requiresVisibilityTimeout;
@@ -487,7 +497,23 @@ export const DockDash = GObject.registerClass({
     }
 
     _queueRedisplay(...args) {
-        return Dash.Dash.prototype._queueRedisplay.call(this, ...args);
+        // Debounce rapid redisplay requests (e.g. from package updates
+        // triggering multiple installed-changed / app-state-changed signals
+        // in quick succession).  The upstream _queueRedisplay only coalesces
+        // within a single frame; this adds a 100 ms cooldown so that bursts
+        // of signals result in a single _redisplay call, preventing the
+        // visible icon flash/flicker described in #2485.
+        if (this._redisplayDebounceId) {
+            // Already scheduled — the pending call will pick up the latest state.
+            return;
+        }
+
+        this._redisplayDebounceId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT, 100, () => {
+                this._redisplayDebounceId = 0;
+                Dash.Dash.prototype._queueRedisplay.call(this, ...args);
+                return GLib.SOURCE_REMOVE;
+            });
     }
 
     _hookUpLabel(...args) {
@@ -2179,6 +2205,24 @@ export const DockDash = GObject.registerClass({
         // to avoid ugly animations, just suppress them like when dash is first loaded.
         this._shownInitially = false;
         this._redisplay();
+    }
+
+    /**
+     * Debounced version of resetAppIcons() for use by theme and icon-theme
+     * change signals.  During package updates or extension reloads, these
+     * signals can fire many times in rapid succession; coalescing them into
+     * a single reset avoids visible icon flashing (#2485).
+     */
+    resetAppIconsDebounced() {
+        if (this._resetIconsDebounceId)
+            return;
+
+        this._resetIconsDebounceId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT, 200, () => {
+                this._resetIconsDebounceId = 0;
+                this.resetAppIcons();
+                return GLib.SOURCE_REMOVE;
+            });
     }
 
     get showAppsButton() {
