@@ -685,6 +685,7 @@
       <default>false</default>
       <summary>Enable spring-physics animations</summary>
       <description>Use spring-based physics for dock show/hide and icon transitions.</description>
+    </key>
     <key name="pinned-commands" type="s">
       <default>''</default>
       <summary>Pinned terminal commands</summary>
@@ -694,6 +695,7 @@
       <default>true</default>
       <summary>Show pinned commands in dock</summary>
       <description>Show pinned terminal command icons in the dock.</description>
+    </key>
     <key name="dock-tiling-enabled" type="b">
       <default>false</default>
       <summary>Enable window tiling from dock</summary>
@@ -713,10 +715,12 @@
       <default>'end'</default>
       <summary>Workspace minimap position in dock</summary>
       <description>Where to place the workspace minimap: 'start' (before favorites) or 'end' (after running apps).</description>
+    </key>
     <key name="show-recent-files" type="b">
       <default>false</default>
       <summary>Show recent files flyout on dock icons</summary>
       <description>Show recently opened files when hovering over or middle-clicking app icons in the dock.</description>
+    </key>
     <key name="show-quick-settings" type="b">
       <default>false</default>
       <summary>Show quick settings button in dock</summary>
@@ -760,6 +764,7 @@
       <default>0.6</default>
       <summary>Wallpaper color intensity</summary>
       <description>How strongly the wallpaper color influences the dock background (0.0 to 1.0).</description>
+    </key>
     <key name="icon-magnification" type="b">
       <default>false</default>
       <summary>Enable icon magnification on hover</summary>
@@ -769,10 +774,12 @@
       <default>1.5</default>
       <summary>Maximum magnification factor</summary>
       <description>Maximum scale factor for the icon under the cursor (1.0 to 3.0).</description>
+    </key>
     <key name="show-volume-control" type="b">
       <default>true</default>
       <summary>Show per-app volume control in context menu</summary>
       <description>Show a volume slider in the dock icon context menu for apps with active audio streams.</description>
+    </key>
     <key name="command-palette-enabled" type="b">
       <default>false</default>
       <summary>Enable dock command palette</summary>
@@ -782,6 +789,7 @@
       <default><![CDATA[['<Super>space']]]></default>
       <summary>Command palette keyboard shortcut</summary>
       <description>Keyboard shortcut to toggle the dock command palette.</description>
+    </key>
     <key name="live-window-thumbnails" type="b">
       <default>false</default>
       <summary>Show live window thumbnails as dock icons</summary>
@@ -799,6 +807,16 @@
       <default>''</default>
       <summary>Active dock profile name</summary>
       <description>Name of the currently active dock profile.</description>
+    </key>
+    <key name="secondary-dock-enabled" type="b">
+      <default>false</default>
+      <summary>Enable secondary dock</summary>
+      <description>Show a secondary dock on a different screen edge displaying only running (non-favorite) applications.</description>
+    </key>
+    <key name="secondary-dock-position" enum="org.gnome.shell.extensions.dash-2-x.position">
+      <default>'LEFT'</default>
+      <summary>Secondary dock position</summary>
+      <description>Screen edge for the secondary dock. Must be different from the primary dock position.</description>
     </key>
   </schema>
 </schemalist>

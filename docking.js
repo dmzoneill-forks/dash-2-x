@@ -224,6 +224,10 @@ const DockedDash = GObject.registerClass({
             'is-main', 'is-main', 'is-main',
             GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY,
             false),
+        'is-secondary': GObject.ParamSpec.boolean(
+            'is-secondary', 'is-secondary', 'is-secondary',
+            GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY,
+            false),
         'monitor-index': GObject.ParamSpec.uint(
             'monitor-index', 'monitor-index', 'monitor-index',
             GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT_ONLY,
@@ -235,7 +239,13 @@ const DockedDash = GObject.registerClass({
     },
 }, class DashToDock extends St.Bin {
     _init(params) {
-        this._position = Utils.getPosition();
+        // Determine position before super._init since we need it for style_class.
+        // Secondary docks use their own position setting.
+        const isSecondary = params.is_secondary || params.isSecondary || false;
+        if (isSecondary)
+            this._position = Utils.getSecondaryPosition();
+        else
+            this._position = Utils.getPosition();
 
         // This is the centering actor
         super._init({
@@ -290,9 +300,9 @@ const DockedDash = GObject.registerClass({
         this._dockDwellTimeoutId = 0;
 
         // Create a new dash object
-        this.dash = new DockDash.DockDash(this.monitorIndex);
+        this.dash = new DockDash.DockDash(this.monitorIndex, this.isSecondary);
 
-        if (Main.overview.isDummy || !settings.showShowAppsButton)
+        if (this.isSecondary || Main.overview.isDummy || !settings.showShowAppsButton)
             this.dash.hideShowAppsButton();
 
         // Create the containers for sliding in and out and
@@ -542,17 +552,12 @@ const DockedDash = GObject.registerClass({
         if (this.get_parent())
             Main.layoutManager.removeChrome(this);
 
-        if (DockManager.settings.dockFixed) {
-            Main.layoutManager.addChrome(this, {
-                trackFullscreen: true,
-                affectsStruts: true,
-            });
-        } else {
-            Main.layoutManager.addChrome(this, {
-                trackFullscreen: true,
-                affectsStruts: false,
-            });
-        }
+        // Secondary docks never affect struts to avoid conflicting with the primary dock
+        const shouldAffectStruts = DockManager.settings.dockFixed && !this.isSecondary;
+        Main.layoutManager.addChrome(this, {
+            trackFullscreen: true,
+            affectsStruts: shouldAffectStruts,
+        });
 
         // Set the initial position.
         this._resetPosition();
@@ -2385,6 +2390,8 @@ export class DockManager {
             Main.overview.disconnect(this._wiggleOverviewId);
             this._wiggleOverviewId = 0;
         }
+    }
+
     get volumeControl() {
         return this._volumeControl;
     }
@@ -2916,6 +2923,14 @@ export class DockManager {
             this._toggle.bind(this),
         ], [
             this._settings,
+            'changed::secondary-dock-enabled',
+            this._toggle.bind(this),
+        ], [
+            this._settings,
+            'changed::secondary-dock-position',
+            this._toggle.bind(this),
+        ], [
+            this._settings,
             'changed::extend-height',
             () => this._adjustPanelCorners(),
         ], [
@@ -3019,6 +3034,19 @@ export class DockManager {
                     continue;
 
                 this._createDock({monitorIndex: iMon});
+            }
+        }
+
+        // Create secondary dock on a different edge if enabled
+        if (this.settings.secondaryDockEnabled) {
+            const secondaryPosition = Utils.getSecondaryPosition();
+            const primaryPosition = Utils.getPosition();
+            // Only create if positions differ
+            if (secondaryPosition !== primaryPosition) {
+                this._createDock({
+                    monitorIndex: this._preferredMonitorIndex,
+                    is_secondary: true,
+                });
             }
         }
 
