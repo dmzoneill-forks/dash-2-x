@@ -939,8 +939,14 @@ const DockedDash = GObject.registerClass({
         }
 
         if (DockManager.settings.dockFixed) {
+            // In fixed mode the dock must be fully visible at all times.
+            // Set slideX directly instead of animating to avoid any
+            // residual offset caused by interrupted animations or
+            // spring-overshoot clamping (issue #2576).
             this._removeAnimations();
-            this._animateIn(settings.animationTime, 0);
+            this._slider.slideX = 1.0;
+            this._dockState = State.SHOWN;
+            this.dash.iconAnimator.start();
         } else if (this._intellihideIsEnabled) {
             if (!this.dash.requiresVisibility && this._intellihide.getOverlapStatus()) {
                 this._ignoreHover = false;
