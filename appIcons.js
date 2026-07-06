@@ -56,6 +56,7 @@ const Labels = Object.freeze({
     MENU_OVERVIEW: Symbol('menu-overview'),
     PREVIEW_OVERVIEW: Symbol('preview-overview'),
     URGENT_WINDOWS: Symbol('urgent-windows'),
+    WIGGLE_MODE: Symbol('wiggle-mode'),
 });
 
 const clickAction = Object.freeze({
@@ -248,6 +249,23 @@ export const DockAbstractAppIcon = GObject.registerClass({
         this._previewMenu = null;
         this._hoverIsEnabled = false;
         this._originalOpenStateChangeId = null;
+
+        // Wiggle mode state
+        this._wiggleLongPressTimeoutId = 0;
+        this._wiggleRemoveBadge = null;
+        this._wiggleJiggling = false;
+        this._wigglePhaseOffset = Math.random() * 2 * Math.PI;
+
+        // Listen for wiggle mode changes from DockManager
+        const dockManager = Docking.DockManager.getDefault();
+        if (dockManager) {
+            this._signalsHandler.addWithLabel(Labels.WIGGLE_MODE,
+                dockManager, 'wiggle-mode-changed',
+                (_dm, active) => this._onWiggleModeChanged(active));
+            // If wiggle mode is already active (icon added during wiggle mode)
+            if (dockManager.wiggleMode)
+                this._onWiggleModeChanged(true);
+        }
     }
 
     _onDestroy() {
@@ -261,6 +279,11 @@ export const DockAbstractAppIcon = GObject.registerClass({
             logError(e);
         }
 
+        // Clean up wiggle mode
+        this._cancelWiggleLongPress();
+        this._removeWiggleBadge();
+        this._stopJiggle();
+
         super._onDestroy();
 
         // This is necessary due to an upstream bug
@@ -268,6 +291,124 @@ export const DockAbstractAppIcon = GObject.registerClass({
         // It can be safely removed once it get solved upstream.
         this._menu?.close(false);
         delete this._menu;
+    }
+
+    // ── Wiggle Mode (iOS-style jiggle for rearranging/unpinning) ──────────
+
+    _onWiggleModeChanged(active) {
+        if (active) {
+            this._startJiggle();
+            this._showWiggleBadge();
+        } else {
+            this._stopJiggle();
+            this._removeWiggleBadge();
+        }
+    }
+
+    _startJiggle() {
+        if (this._wiggleJiggling)
+            return;
+        const icon = this.icon?._iconBin;
+        if (!icon)
+            return;
+
+        icon.set_pivot_point(0.5, 0.5);
+        this.iconAnimator.addAnimation(icon, 'jiggle', {
+            phaseOffset: this._wigglePhaseOffset,
+        });
+        this._wiggleJiggling = true;
+    }
+
+    _stopJiggle() {
+        if (!this._wiggleJiggling)
+            return;
+        const icon = this.icon?._iconBin;
+        if (!icon)
+            return;
+
+        this.iconAnimator.removeAnimation(icon, 'jiggle');
+        icon.rotation_angle_z = 0;
+        this._wiggleJiggling = false;
+    }
+
+    _showWiggleBadge() {
+        if (this._wiggleRemoveBadge)
+            return;
+
+        // Only show the X badge on favorite (pinned) apps that can be unpinned
+        const appId = this.app?.get_id();
+        if (!appId)
+            return;
+
+        const isFavorite = AppFavorites.getAppFavorites().isFavorite(appId);
+        if (!isFavorite)
+            return;
+
+        // Ensure the app can be unfavorited
+        if (!global.settings.is_writable('favorite-apps'))
+            return;
+
+        const badge = new St.Button({
+            style_class: 'wiggle-remove-badge',
+            x_align: Clutter.ActorAlign.START,
+            y_align: Clutter.ActorAlign.START,
+            x_expand: false,
+            y_expand: false,
+            reactive: true,
+            can_focus: true,
+            track_hover: true,
+            child: new St.Icon({
+                icon_name: 'window-close-symbolic',
+                style_class: 'wiggle-remove-badge-icon',
+            }),
+        });
+
+        badge.connect('clicked', () => {
+            const favs = AppFavorites.getAppFavorites();
+            favs.removeFavorite(appId);
+            // Exit wiggle mode after unpinning
+            Docking.DockManager.getDefault().exitWiggleMode();
+            return Clutter.EVENT_STOP;
+        });
+
+        // Add the badge as an overlay on the icon
+        this._wiggleRemoveBadge = badge;
+        this.add_child(badge);
+    }
+
+    _removeWiggleBadge() {
+        if (!this._wiggleRemoveBadge)
+            return;
+
+        this.remove_child(this._wiggleRemoveBadge);
+        this._wiggleRemoveBadge.destroy();
+        this._wiggleRemoveBadge = null;
+    }
+
+    _startWiggleLongPress() {
+        this._cancelWiggleLongPress();
+
+        if (!Docking.DockManager.settings.wiggleModeEnabled)
+            return;
+
+        // Don't start long-press if already in wiggle mode
+        const dockManager = Docking.DockManager.getDefault();
+        if (dockManager?.wiggleMode)
+            return;
+
+        this._wiggleLongPressTimeoutId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT, 500, () => {
+                this._wiggleLongPressTimeoutId = 0;
+                dockManager?.enterWiggleMode();
+                return GLib.SOURCE_REMOVE;
+            });
+    }
+
+    _cancelWiggleLongPress() {
+        if (this._wiggleLongPressTimeoutId) {
+            GLib.source_remove(this._wiggleLongPressTimeoutId);
+            this._wiggleLongPressTimeoutId = 0;
+        }
     }
 
     ownsWindow(window) {
@@ -571,7 +712,32 @@ export const DockAbstractAppIcon = GObject.registerClass({
         return false;
     }
 
+    vfunc_button_press_event(buttonEvent) {
+        // Start long-press detection for wiggle mode (primary button only)
+        if (buttonEvent.button === Clutter.BUTTON_PRIMARY)
+            this._startWiggleLongPress();
+
+        return super.vfunc_button_press_event(buttonEvent);
+    }
+
+    vfunc_button_release_event(buttonEvent) {
+        this._cancelWiggleLongPress();
+        return super.vfunc_button_release_event(buttonEvent);
+    }
+
+    vfunc_leave_event(crossingEvent) {
+        this._cancelWiggleLongPress();
+        return super.vfunc_leave_event(crossingEvent);
+    }
+
     activate(button) {
+        // If in wiggle mode, clicking an icon exits wiggle mode instead of activating
+        const dockManager = Docking.DockManager.getDefault();
+        if (dockManager?.wiggleMode) {
+            dockManager.exitWiggleMode();
+            return;
+        }
+
         // Prevent any action while bounce animation is in progress
         if (this._bounceHandle?.isActive)
             return;

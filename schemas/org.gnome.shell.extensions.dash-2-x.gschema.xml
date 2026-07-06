@@ -695,5 +695,10 @@
         6: Cascade (staggered)
       </description>
     </key>
+    <key name="wiggle-mode-enabled" type="b">
+      <default>true</default>
+      <summary>Enable wiggle mode for icon rearranging</summary>
+      <description>Long-press dock icons to enter wiggle mode for easier rearranging and unpinning.</description>
+    </key>
   </schema>
 </schemalist>

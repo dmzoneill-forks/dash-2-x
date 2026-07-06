@@ -505,6 +505,26 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
     margin: 32px 0px;
 }
 
+/* Wiggle mode remove badge — shown on pinned icons during iOS-style jiggle */
+.wiggle-remove-badge {
+    background-color: rgba(200, 50, 50, 0.9);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    padding: 0;
+    margin: 2px;
+
+    .wiggle-remove-badge-icon {
+        icon-size: 10px;
+        color: white;
+    }
+
+    &:hover {
+        background-color: rgba(230, 50, 50, 1.0);
+    }
+}
+
 #dashtodockContainer .metro .overview-icon {
     border-radius: 0px;
 }
