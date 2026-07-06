@@ -790,6 +790,15 @@
       <default>''</default>
       <summary>Per-app badge overrides</summary>
       <description>JSON object mapping app IDs to badge configuration. Each entry: {"appId": {"enabled": true/false, "source": "auto"|"notifications"|"app-counter"|"none"}}.</description>
+    <key name="dock-profiles" type="s">
+      <default>''</default>
+      <summary>Saved dock configuration profiles</summary>
+      <description>JSON array of named dock configuration profiles.</description>
+    </key>
+    <key name="active-profile" type="s">
+      <default>''</default>
+      <summary>Active dock profile name</summary>
+      <description>Name of the currently active dock profile.</description>
     </key>
   </schema>
 </schemalist>

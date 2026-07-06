@@ -1316,11 +1316,266 @@ const DockSettings = GObject.registerClass({
         this._settings.bind('show-quick-settings',
             this._builder.get_object('show_quick_settings_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);
+        // Profiles Panel
+
+        this._bindProfilesUI();
 
         // About Panel
 
         this._builder.get_object('extension_version').set_label(
             `${this._extensionPreferences.metadata.version}`);
+    }
+
+    _readProfiles() {
+        try {
+            const raw = this._settings.get_string('dock-profiles');
+            if (!raw)
+                return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    _refreshProfileCombo() {
+        const combo = this._builder.get_object('profile_combo');
+        const deleteButton = this._builder.get_object('profile_delete_button');
+
+        combo.remove_all();
+        const profiles = this._readProfiles();
+        const activeProfile = this._settings.get_string('active-profile');
+        let activeIdx = -1;
+
+        for (let i = 0; i < profiles.length; i++) {
+            combo.append_text(profiles[i].name);
+            if (profiles[i].name === activeProfile)
+                activeIdx = i;
+        }
+
+        if (activeIdx >= 0)
+            combo.set_active(activeIdx);
+        else if (profiles.length > 0)
+            combo.set_active(0);
+
+        deleteButton.set_sensitive(profiles.length > 0);
+    }
+
+    _bindProfilesUI() {
+        const combo = this._builder.get_object('profile_combo');
+        const saveButton = this._builder.get_object('profile_save_button');
+        const deleteButton = this._builder.get_object('profile_delete_button');
+
+        this._refreshProfileCombo();
+
+        // Load profile when selection changes
+        combo.connect('changed', widget => {
+            if (this._updatingProfiles)
+                return;
+            const name = widget.get_active_text();
+            if (!name)
+                return;
+
+            // Apply the profile settings
+            const profiles = this._readProfiles();
+            const profile = profiles.find(p => p.name === name);
+            if (!profile)
+                return;
+
+            const PROFILE_SETTINGS_KEYS = [
+                'dock-position', 'dash-max-icon-size', 'dock-fixed', 'autohide',
+                'intellihide', 'extend-height', 'height-fraction', 'icon-size-fixed',
+                'multi-monitor', 'dock-margin-size', 'show-favorites', 'show-running',
+                'show-trash', 'show-mounts', 'click-action', 'scroll-action',
+                'transparency-mode', 'background-opacity', 'custom-background-color',
+                'background-color', 'autohide-in-fullscreen', 'intellihide-mode',
+                'require-pressure-to-show', 'show-show-apps-button', 'show-apps-at-top',
+                'apply-custom-theme', 'custom-theme-shrink', 'running-indicator-style',
+                'unity-backlit-items', 'force-straight-corner', 'custom-border-radius',
+                'isolate-workspaces', 'isolate-monitors', 'group-apps',
+                'show-windows-preview', 'dance-urgent-applications', 'bounce-icons',
+                'show-icons-emblems', 'show-icons-notifications-counter', 'hot-keys',
+                'disable-overview-on-startup', 'always-center-icons',
+                'show-apps-always-in-the-edge', 'hide-tooltip', 'show-previews-hover',
+                'scroll-to-focused-application', 'isolate-locations',
+                'show-mounts-only-mounted', 'show-mounts-network', 'bolt-support',
+            ];
+
+            const {settings: snapshot} = profile;
+            for (const key of PROFILE_SETTINGS_KEYS) {
+                if (!(key in snapshot))
+                    continue;
+
+                try {
+                    const schemaKey = this._settings.settings_schema.get_key(key);
+                    if (!schemaKey)
+                        continue;
+
+                    const range = schemaKey.get_range().deep_unpack();
+                    if (range[0] === 'enum') {
+                        this._settings.set_enum(key, snapshot[key]);
+                    } else {
+                        const variant = schemaKey.get_default_value();
+                        const type = variant.get_type_string();
+                        this._setTypedValue(key, type, snapshot[key]);
+                    }
+                } catch (e) {
+                    logError(e, `Profiles: failed to set key '${key}'`);
+                }
+            }
+
+            this._settings.set_string('active-profile', name);
+        });
+
+        // Save current configuration as a new profile
+        saveButton.connect('clicked', () => {
+            const dialog = new Gtk.Dialog({
+                title: __('Save profile'),
+                transient_for: this.widget.get_root(),
+                use_header_bar: true,
+                modal: true,
+            });
+
+            dialog.add_button(__('Cancel'), Gtk.ResponseType.CANCEL);
+            dialog.add_button(__('Save'), Gtk.ResponseType.OK);
+
+            const box = new Gtk.Box({
+                orientation: Gtk.Orientation.HORIZONTAL,
+                spacing: 12,
+                margin_start: 24,
+                margin_end: 24,
+                margin_top: 24,
+                margin_bottom: 24,
+            });
+
+            const label = new Gtk.Label({label: __('Profile name:')});
+            const entry = new Gtk.Entry({
+                hexpand: true,
+                activates_default: true,
+            });
+
+            // Pre-fill with active profile name if one exists
+            const activeProfile = this._settings.get_string('active-profile');
+            if (activeProfile)
+                entry.set_text(activeProfile);
+
+            box.append(label);
+            box.append(entry);
+            dialog.get_content_area().append(box);
+
+            dialog.set_default_response(Gtk.ResponseType.OK);
+
+            dialog.connect('response', (_, id) => {
+                if (id === Gtk.ResponseType.OK) {
+                    const profileName = entry.get_text().trim();
+                    if (profileName)
+                        this._saveCurrentProfile(profileName);
+                }
+                dialog.destroy();
+            });
+
+            dialog.present();
+        });
+
+        // Delete selected profile
+        deleteButton.connect('clicked', () => {
+            const name = combo.get_active_text();
+            if (!name)
+                return;
+
+            const profiles = this._readProfiles().filter(p => p.name !== name);
+            this._settings.set_string('dock-profiles', JSON.stringify(profiles));
+
+            if (this._settings.get_string('active-profile') === name)
+                this._settings.set_string('active-profile', '');
+
+            this._updatingProfiles = true;
+            this._refreshProfileCombo();
+            this._updatingProfiles = false;
+        });
+
+        // Update combo when profiles change externally
+        this._settings.connect('changed::dock-profiles', () => {
+            this._updatingProfiles = true;
+            this._refreshProfileCombo();
+            this._updatingProfiles = false;
+        });
+    }
+
+    _saveCurrentProfile(name) {
+        const PROFILE_SETTINGS_KEYS = [
+            'dock-position', 'dash-max-icon-size', 'dock-fixed', 'autohide',
+            'intellihide', 'extend-height', 'height-fraction', 'icon-size-fixed',
+            'multi-monitor', 'dock-margin-size', 'show-favorites', 'show-running',
+            'show-trash', 'show-mounts', 'click-action', 'scroll-action',
+            'transparency-mode', 'background-opacity', 'custom-background-color',
+            'background-color', 'autohide-in-fullscreen', 'intellihide-mode',
+            'require-pressure-to-show', 'show-show-apps-button', 'show-apps-at-top',
+            'apply-custom-theme', 'custom-theme-shrink', 'running-indicator-style',
+            'unity-backlit-items', 'force-straight-corner', 'custom-border-radius',
+            'isolate-workspaces', 'isolate-monitors', 'group-apps',
+            'show-windows-preview', 'dance-urgent-applications', 'bounce-icons',
+            'show-icons-emblems', 'show-icons-notifications-counter', 'hot-keys',
+            'disable-overview-on-startup', 'always-center-icons',
+            'show-apps-always-in-the-edge', 'hide-tooltip', 'show-previews-hover',
+            'scroll-to-focused-application', 'isolate-locations',
+            'show-mounts-only-mounted', 'show-mounts-network', 'bolt-support',
+        ];
+
+        const snapshot = {};
+        for (const key of PROFILE_SETTINGS_KEYS) {
+            try {
+                const schemaKey = this._settings.settings_schema.get_key(key);
+                if (!schemaKey)
+                    continue;
+
+                const range = schemaKey.get_range().deep_unpack();
+                if (range[0] === 'enum')
+                    snapshot[key] = this._settings.get_enum(key);
+                else
+                    snapshot[key] = this._settings.get_value(key).recursiveUnpack();
+            } catch (e) {
+                logError(e, `Profiles: failed to read key '${key}'`);
+            }
+        }
+
+        const profiles = this._readProfiles();
+        const idx = profiles.findIndex(p => p.name === name);
+        const entry = {name, settings: snapshot};
+
+        if (idx >= 0)
+            profiles[idx] = entry;
+        else
+            profiles.push(entry);
+
+        this._settings.set_string('dock-profiles', JSON.stringify(profiles));
+        this._settings.set_string('active-profile', name);
+
+        this._updatingProfiles = true;
+        this._refreshProfileCombo();
+        this._updatingProfiles = false;
+    }
+
+    _setTypedValue(key, type, value) {
+        switch (type) {
+        case 'b':
+            this._settings.set_boolean(key, value);
+            break;
+        case 'i':
+            this._settings.set_int(key, value);
+            break;
+        case 'd':
+            this._settings.set_double(key, value);
+            break;
+        case 's':
+            this._settings.set_string(key, value);
+            break;
+        case 'as':
+            this._settings.set_strv(key, value);
+            break;
+        default:
+            this._settings.set_value(key, new GLib.Variant(type, value));
+        }
     }
 });
 

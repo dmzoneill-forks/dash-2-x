@@ -36,6 +36,7 @@ import {
     CommandPalette,
     DockDash,
     DockTiling,
+    DockProfiles,
     DesktopIconsIntegration,
     FileManager1API,
     Intellihide,
@@ -2210,6 +2211,7 @@ export class DockManager {
         this._screencastMonitor = new ScreencastMonitor.ScreencastMonitor();
         this._mprisMonitor = new MprisMonitor.MprisMonitor();
         this._volumeControl = new VolumeControl.VolumeControl();
+        this._dockProfiles = new DockProfiles.DockProfiles(this._settings);
 
         const needsRemoteModel = () =>
             !this._notificationsMonitor.dndMode && this._settings.showIconsEmblems;
@@ -2648,6 +2650,8 @@ export class DockManager {
 
     get mprisMonitor() {
         return this._mprisMonitor;
+    get dockProfiles() {
+        return this._dockProfiles;
     }
 
     getDockByMonitor(monitorIndex) {
@@ -3526,6 +3530,8 @@ export class DockManager {
             this._fm1Client.destroy();
             this._fm1Client = null;
         }
+        this._dockProfiles?.destroy();
+        this._dockProfiles = null;
         this._notificationsMonitor.destroy();
         this._screencastMonitor.destroy();
         this._mprisMonitor?.destroy();
