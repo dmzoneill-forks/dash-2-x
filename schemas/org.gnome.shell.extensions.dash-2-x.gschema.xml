@@ -689,6 +689,10 @@
       <default>true</default>
       <summary>Show pinned commands in dock</summary>
       <description>Show pinned terminal command icons in the dock.</description>
+    <key name="dock-tiling-enabled" type="b">
+      <default>false</default>
+      <summary>Enable window tiling from dock</summary>
+      <description>Drag dock icons to screen edges to tile application windows.</description>
     </key>
     <key name="show-previews-hover" type="b">
       <default>false</default>

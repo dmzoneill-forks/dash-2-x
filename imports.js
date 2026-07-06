@@ -9,6 +9,7 @@ export * as CommandPalette from './commandPalette.js';
 export * as DockDash from './dash.js';
 export * as DBusMenuUtils from './dbusmenuUtils.js';
 export * as DesktopIconsIntegration from './desktopIconsIntegration.js';
+export * as DockTiling from './dockTiling.js';
 export * as Docking from './docking.js';
 export * as Extension from './extension.js';
 export * as FileManager1API from './fileManager1API.js';

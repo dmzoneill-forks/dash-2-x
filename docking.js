@@ -35,6 +35,7 @@ import {
     AppSpread,
     CommandPalette,
     DockDash,
+    DockTiling,
     DesktopIconsIntegration,
     FileManager1API,
     Intellihide,
@@ -2960,6 +2961,10 @@ export class DockManager {
                 if (!this._settings.intellihide)
                     this._desktopIconsUsableArea.resetMargins();
             },
+        ], [
+            this._settings,
+            'changed::dock-tiling-enabled',
+            () => this._ensureDockTiling(),
         ]);
 
         this._mapExternalSetting(this._appSwitcherSettings, 'current-workspace-only',
@@ -3017,6 +3022,9 @@ export class DockManager {
         // we need to connect the signals to all dock instances.
         this._workspaceIsolation = new WorkspaceIsolation();
         this._keyboardShortcuts = new KeyboardShortcuts();
+
+        // Window tiling from dock drag
+        this._ensureDockTiling();
 
         this.emit('docks-ready');
     }
@@ -3411,10 +3419,22 @@ export class DockManager {
         }
     }
 
+    _ensureDockTiling() {
+        if (this._settings.dockTilingEnabled) {
+            if (!this._dockTiling)
+                this._dockTiling = new DockTiling.DockTiling();
+        } else if (this._dockTiling) {
+            this._dockTiling.destroy();
+            this._dockTiling = null;
+        }
+    }
+
     _deleteDocks() {
         // Remove extra features
         this._workspaceIsolation?.destroy();
         this._keyboardShortcuts?.destroy();
+        this._dockTiling?.destroy();
+        this._dockTiling = null;
         this._desktopIconsUsableArea?.resetMargins();
 
         // Delete all docks
