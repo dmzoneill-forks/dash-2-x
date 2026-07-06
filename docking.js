@@ -3203,6 +3203,17 @@ export class DockManager {
                 }
 
                 box.y2 -= searchBox.get_height() + 2 * spacing;
+
+                // Account for horizontal dock height so that window preview
+                // tooltips in the overview are not cropped by the dock (#2530).
+                if (this.mainDock.isHorizontal && !this.settings.dockFixed) {
+                    const [, preferredHeight] = this.mainDock.get_preferred_height(
+                        box.get_width());
+                    if (this.mainDock.position === St.Side.BOTTOM)
+                        box.y2 -= preferredHeight;
+                    else if (this.mainDock.position === St.Side.TOP)
+                        box.y1 += preferredHeight;
+                }
             }
 
             return box;
