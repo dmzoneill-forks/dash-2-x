@@ -696,6 +696,21 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
 
 .quick-settings-button-icon {
     icon-size: 16px;
+/* Backlit indicator: glow effect behind running app icons (Unity7 style).
+ * Applied to .app-well-app .overview-icon when backlit is enabled.
+ * The dominant-color variant uses inline styles for per-app colors;
+ * this class provides the fallback and structural styling that themes
+ * can override. */
+#dashtodockContainer .app-icon-backlit {
+    border-radius: 5px;
+    background-gradient-direction: vertical;
+    background-gradient-start: #e0e0e0;
+    background-gradient-end: darkgray;
+}
+
+/* Glossy overlay applied on top of the backlit icon */
+#dashtodockContainer .app-icon-glossy {
+    background-size: contain;
 }
 
 #dashtodockContainer .metro .overview-icon {

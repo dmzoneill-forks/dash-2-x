@@ -201,40 +201,53 @@ class RunningIndicatorBase extends IndicatorBase {
     }
 
     _enableBacklight() {
+        this._source._iconContainer.add_style_class_name('app-icon-backlit');
+
         const colorPalette = this._dominantColorExtractor._getColorPalette();
 
-        // Fallback
-        if (!colorPalette) {
+        // When a dominant color is available, override the CSS fallback
+        // with per-app colors via inline style
+        if (colorPalette) {
             this._source._iconContainer.set_style(
-                'border-radius: 5px;' +
-                'background-gradient-direction: vertical;' +
-                'background-gradient-start: #e0e0e0;' +
-                'background-gradient-end: darkgray;'
+                `background-gradient-start: ${colorPalette.original};` +
+                `background-gradient-end: ${colorPalette.darker};`
             );
-
-            return;
+        } else {
+            this._source._iconContainer.set_style(null);
         }
-
-        this._source._iconContainer.set_style(
-            `${'border-radius: 5px;' +
-            'background-gradient-direction: vertical;' +
-            'background-gradient-start: '}${colorPalette.original};` +
-            `background-gradient-end: ${colorPalette.darker};`
-        );
     }
 
     _disableBacklight() {
+        this._source._iconContainer.remove_style_class_name('app-icon-backlit');
         this._source._iconContainer.set_style(null);
     }
 
     destroy() {
         this._disableBacklight();
-        // Remove glossy background if the children still exists
-        if (this._source._iconContainer.get_children().length > 1)
-            this._source._iconContainer.get_children()[1].set_style(null);
+        this._disableGlossy();
         this._restoreDefaultDot();
 
         super.destroy();
+    }
+
+    _enableGlossy() {
+        const [icon] = this._source._iconContainer.get_children();
+        if (icon) {
+            icon.add_style_class_name('app-icon-glossy');
+            const {extension} = Docking.DockManager;
+            icon.set_style(
+                `background-image: url('${extension.path}/media/glossy.svg');`
+            );
+        }
+    }
+
+    _disableGlossy() {
+        const children = this._source._iconContainer.get_children();
+        if (children.length > 0) {
+            const [icon] = children;
+            icon.remove_style_class_name('app-icon-glossy');
+            icon.set_style(null);
+        }
     }
 }
 
@@ -319,32 +332,23 @@ class RunningIndicatorDots extends RunningIndicatorBase {
                 this.update.bind(this)
             );
         }, this);
-
-        // Apply glossy background
-        // TODO: move to enable/disableBacklit to apply it only to the running apps?
-        // TODO: move to css class for theming support
-        const {extension} = Docking.DockManager;
-        this._glossyBackgroundStyle = `background-image: url('${extension.path}/media/glossy.svg');` +
-                                      'background-size: contain;';
     }
 
     update() {
         super.update();
 
-        // Enable / Disable the backlight of running apps
+        // Enable / Disable the backlight and glossy effects for running apps
         if (!Docking.DockManager.settings.applyCustomTheme &&
-            Docking.DockManager.settings.unityBacklitItems) {
-            const [icon] = this._source._iconContainer.get_children();
-            icon.set_style(
-                Docking.DockManager.settings.applyGlossyEffect
-                    ? this._glossyBackgroundStyle : null);
-            if (this._source.running)
-                this._enableBacklight();
+            Docking.DockManager.settings.unityBacklitItems &&
+            this._source.running) {
+            this._enableBacklight();
+            if (Docking.DockManager.settings.applyGlossyEffect)
+                this._enableGlossy();
             else
-                this._disableBacklight();
+                this._disableGlossy();
         } else {
             this._disableBacklight();
-            this._source._iconContainer.get_children()[1].set_style(null);
+            this._disableGlossy();
         }
 
         if (this._area)
