@@ -7,7 +7,6 @@ import {
     Gio,
     GLib,
     GObject,
-    Meta,
     Shell,
     St,
 } from './dependencies/gi.js';
@@ -183,6 +182,12 @@ export const DockDash = GObject.registerClass({
         this._showLabelTimeoutId = 0;
         this._resetHoverTimeoutId = 0;
         this._labelShowing = false;
+
+        // DnD freeze prevention: track when a drag operation is in progress
+        // so we can defer expensive redisplay work until the drag completes.
+        this._dragInProgress = false;
+        this._redisplayQueuedDuringDrag = false;
+        this._resetIconsQueuedDuringDrag = false;
 
         this._dashContainer = new St.BoxLayout({
             name: 'dashtodockDashContainer',
@@ -360,6 +365,7 @@ export const DockDash = GObject.registerClass({
 
 
     _onItemDragBegin(...args) {
+        this._dragInProgress = true;
         return Dash.Dash.prototype._onItemDragBegin.call(this, ...args);
     }
 
@@ -372,7 +378,43 @@ export const DockDash = GObject.registerClass({
     }
 
     _endItemDrag(...args) {
-        return Dash.Dash.prototype._endItemDrag.call(this, ...args);
+        const result = Dash.Dash.prototype._endItemDrag.call(this, ...args);
+        this._dragInProgress = false;
+        this._flushDeferredDragWork();
+        return result;
+    }
+
+    /**
+     * Flush any redisplay or icon-reset work that was deferred while a
+     * drag-and-drop operation was in progress.  Called once the DnD
+     * operation completes so the dock updates without blocking the
+     * compositor during the drag.
+     */
+    _flushDeferredDragWork() {
+        const dockManager = Docking.DockManager.getDefault();
+        if (!dockManager)
+            return;
+
+        // Flush pending _ensureLocations (from user-categories changes)
+        if (dockManager._ensureLocationsPending) {
+            dockManager._ensureLocationsPending = false;
+            dockManager._ensureLocations();
+        }
+
+        // Flush any pending dock-order sync that was deferred during drag
+        if (dockManager._dockOrderSyncPending) {
+            dockManager._dockOrderSyncPending = false;
+            dockManager._syncDockOrderWithFavorites();
+        }
+
+        if (this._resetIconsQueuedDuringDrag) {
+            this._resetIconsQueuedDuringDrag = false;
+            this._redisplayQueuedDuringDrag = false;
+            this.resetAppIcons();
+        } else if (this._redisplayQueuedDuringDrag) {
+            this._redisplayQueuedDuringDrag = false;
+            this._queueRedisplay();
+        }
     }
 
     _onItemDragMotion(...args) {
@@ -384,6 +426,10 @@ export const DockDash = GObject.registerClass({
     }
 
     _queueRedisplay(...args) {
+        if (this._dragInProgress) {
+            this._redisplayQueuedDuringDrag = true;
+            return undefined;
+        }
         return Dash.Dash.prototype._queueRedisplay.call(this, ...args);
     }
 
@@ -612,9 +658,10 @@ export const DockDash = GObject.registerClass({
                 const targetId = targetApp.get_id?.();
                 if (!targetId)
                     return false;
-                dockManager.createUserCategory(appId, targetId, dockInsertIdx);
-                const laters = global.compositor.get_laters();
-                laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
+                // Defer all GSettings writes to an idle callback to avoid
+                // cascading signal storms that freeze the compositor (#37).
+                GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    dockManager.createUserCategory(appId, targetId, dockInsertIdx);
                     const favs = AppFavorites.getAppFavorites();
                     if (appId in favs.getFavoriteMap())
                         favs.removeFavorite(appId);
@@ -628,9 +675,8 @@ export const DockDash = GObject.registerClass({
                 const catId = targetApp._categoryData?.id;
                 if (!catId)
                     return false;
-                dockManager.addAppToUserCategory(catId, appId);
-                const laters = global.compositor.get_laters();
-                laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
+                GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    dockManager.addAppToUserCategory(catId, appId);
                     const favs = AppFavorites.getAppFavorites();
                     if (appId in favs.getFavoriteMap())
                         favs.removeFavorite(appId);
@@ -641,8 +687,12 @@ export const DockDash = GObject.registerClass({
                 // Category + Category -> merge
                 const srcId = app._categoryData?.id;
                 const tgtId = targetApp._categoryData?.id;
-                if (srcId && tgtId)
-                    dockManager.mergeUserCategories(srcId, tgtId);
+                if (srcId && tgtId) {
+                    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                        dockManager.mergeUserCategories(srcId, tgtId);
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
                 return true;
             }
 
@@ -695,11 +745,11 @@ export const DockDash = GObject.registerClass({
                     favPos++;
             }
 
-            dockManager.setDockOrder(newDockOrder);
             this._clearDragPlaceholder();
 
-            const laters = global.compositor.get_laters();
-            laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
+            // Defer GSettings writes to an idle callback (#37).
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                dockManager.setDockOrder(newDockOrder);
                 dockManager.removeAppFromUserCategory(inCategoryId, appId);
                 const favs = AppFavorites.getAppFavorites();
                 if (!(appId in favs.getFavoriteMap()))
@@ -711,9 +761,11 @@ export const DockDash = GObject.registerClass({
 
         if (isCustom) {
             // ── Category icon repositioning ─────────────────────────────
-            dockManager.setDockOrder(newDockOrder);
             this._clearDragPlaceholder();
-            this._queueRedisplay();
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                dockManager.setDockOrder(newDockOrder);
+                return GLib.SOURCE_REMOVE;
+            });
             return true;
         }
 
@@ -729,8 +781,11 @@ export const DockDash = GObject.registerClass({
         // If the app is not a favorite (just a running app), only reorder
         // visually via dock-order -- do NOT pin it as a favorite (#72).
         if (!srcIsFavorite) {
-            dockManager.setDockOrder(newDockOrder);
             this._clearDragPlaceholder();
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                dockManager.setDockOrder(newDockOrder);
+                return GLib.SOURCE_REMOVE;
+            });
             return true;
         }
 
@@ -746,11 +801,13 @@ export const DockDash = GObject.registerClass({
                 favPos++;
         }
 
-        dockManager.setDockOrder(newDockOrder);
         this._clearDragPlaceholder();
 
-        const laters = global.compositor.get_laters();
-        laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
+        // Defer GSettings writes and favorites mutation to an idle
+        // callback so the drop handler returns immediately and the
+        // compositor can finish the DnD animation without blocking (#37).
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            dockManager.setDockOrder(newDockOrder);
             favorites.moveFavoriteToPos(id, favPos);
             return GLib.SOURCE_REMOVE;
         });
@@ -1621,6 +1678,11 @@ export const DockDash = GObject.registerClass({
      * show favorites/show running settings
      */
     resetAppIcons() {
+        if (this._dragInProgress) {
+            this._resetIconsQueuedDuringDrag = true;
+            return;
+        }
+
         const children = this._box.get_children().filter(actor => {
             return actor.child &&
                    !!actor.child.icon;

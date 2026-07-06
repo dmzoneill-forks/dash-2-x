@@ -2204,6 +2204,13 @@ export class DockManager {
      * Only appends newly pinned favorites -- never removes entries.
      */
     _syncDockOrderWithFavorites() {
+        // If any dock is currently in a DnD operation, defer the sync to
+        // avoid cascading GSettings writes that freeze the compositor (#37).
+        if (DockManager.allDocks.some(dock => dock.dash._dragInProgress)) {
+            this._dockOrderSyncPending = true;
+            return;
+        }
+
         const order = this._settings.get_strv('dock-order');
         if (order.length === 0)
             return; // not yet migrated
@@ -2641,6 +2648,15 @@ export class DockManager {
             this._settings,
             'changed::user-categories',
             () => {
+                // If a DnD is in progress, defer this heavy operation until
+                // the drag completes to prevent compositor freezes (#37).
+                if (DockManager.allDocks.some(dock => dock.dash._dragInProgress)) {
+                    this._ensureLocationsPending = true;
+                    DockManager.allDocks.forEach(dock => {
+                        dock.dash._resetIconsQueuedDuringDrag = true;
+                    });
+                    return;
+                }
                 this._ensureLocations();
                 DockManager.allDocks.forEach(dock => dock.dash._queueRedisplay());
             },
