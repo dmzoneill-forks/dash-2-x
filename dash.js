@@ -1427,6 +1427,10 @@ export const DockDash = GObject.registerClass({
         return app && (app.isTrash || app.isMountableVolume);
     }
 
+    _isPinnedCommandApp(app) {
+        return app && app.isPinnedCommand;
+    }
+
     _ensureSeparator(separator, pos) {
         if (!separator) {
             separator = new St.Widget({
@@ -1580,6 +1584,17 @@ export const DockDash = GObject.registerClass({
             const trashApp = dockManager.trash.getApp();
             if (!newApps.includes(trashApp))
                 newApps.push(trashApp);
+        }
+
+        // ── Phase 4b: Pinned Commands ────────────────────────────
+        if (dockManager.pinnedCommandsManager) {
+            this._signalsHandler.addWithLabel(Labels.SHOW_MOUNTS,
+                dockManager.pinnedCommandsManager, 'changed',
+                this._queueRedisplay.bind(this));
+            dockManager.pinnedCommandsManager.getApps().forEach(cmdApp => {
+                if (!newApps.includes(cmdApp))
+                    newApps.push(cmdApp);
+            });
         }
 
         // Filter trash from oldApps to avoid errors if it was removed
@@ -1741,11 +1756,12 @@ export const DockDash = GObject.registerClass({
 
         /* Update separator for locations */
 
-        // Count location apps among expected items
+        // Count location and pinned-command apps among expected items
         const nLocationApps = expectedItems.filter(item =>
-            this._isLocationApp(item.app)).length;
+            this._isLocationApp(item.app) || this._isPinnedCommandApp(item.app)).length;
         const nRunning = expectedItems.filter(item =>
-            !item.isFavorite && !this._isLocationApp(item.app)).length;
+            !item.isFavorite && !this._isLocationApp(item.app) &&
+            !this._isPinnedCommandApp(item.app)).length;
         const posLocations = this._box.get_n_children() - nLocationApps;
         const isRedudantSeparator = nRunning <= 0;
         if (nLocationApps > 0 && nLocationApps < nIcons && !isRedudantSeparator) {

@@ -35,6 +35,7 @@ import {
     Docking,
     Locations,
     MediaControls,
+    PinnedCommands,
     Theming,
     Utils,
     VolumeMenuItem,
@@ -1502,12 +1503,136 @@ const DockLocationAppIcon = GObject.registerClass({
     }
 });
 
+const DockCommandAppIcon = GObject.registerClass({
+}, class DockCommandAppIcon extends DockAbstractAppIcon {
+    _init(app, monitorIndex, iconAnimator) {
+        super._init(app, monitorIndex, iconAnimator);
+
+        // Pinned commands have no windows to track focus for
+        this._signalsHandler.add(this.app, 'notify::icon', () => this.icon.update());
+
+        // Disable dragging for pinned command icons
+        if (this._draggable) {
+            this._draggable.destroy?.();
+            this._draggable = null;
+        }
+    }
+
+    _updateFocusState() {
+        // Pinned commands are never "focused"
+        this.focused = false;
+    }
+
+    // Override to prevent right-click menu from showing standard app actions
+    popupMenu() {
+        this._removeMenuTimeout?.();
+        this.fake_release();
+        this._draggable?.fakeRelease?.();
+
+        if (!this._menu) {
+            this._menu = new DockCommandAppIconMenu(this);
+            this._menu.connect('open-state-changed', (menu, isPoppedUp) => {
+                if (!isPoppedUp)
+                    this._onMenuPoppedDown();
+            });
+            this._signalsHandler.addWithLabel(Labels.MENU_OVERVIEW,
+                Main.overview, 'hiding', () => this._menu.close());
+            this._signalsHandler.add(this._menu.actor, 'destroy', () =>
+                this._signalsHandler.removeWithLabel(Labels.MENU_OVERVIEW));
+
+            this._menuManager.addMenu(this._menu);
+        }
+
+        this.emit('menu-state-changed', true);
+        this.set_hover(true);
+        this._menu.popup();
+        this._menuManager.ignoreRelease?.();
+        this.emit('sync-tooltip');
+        return false;
+    }
+});
+
+/**
+ * Context menu for pinned command icons.
+ * Shows the command, and offers a Remove option.
+ */
+class DockCommandAppIconMenu extends PopupMenu.PopupMenu {
+    constructor(source) {
+        super(source, 0.5, Utils.getPosition());
+
+        this._signalsHandler = new Utils.GlobalSignalsHandler(this);
+        this.blockSourceEvents = true;
+
+        this.actor.add_style_class_name('app-menu');
+        this.actor.add_style_class_name('dock-app-menu');
+
+        this._signalsHandler.add(source, 'notify::mapped', () => {
+            if (!source.mapped)
+                this.close();
+        });
+        this._signalsHandler.add(source, 'destroy', () => this.destroy());
+
+        Main.uiGroup.add_child(this.actor);
+    }
+
+    destroy() {
+        super.destroy();
+        delete this.sourceActor;
+        delete this._signalsHandler;
+    }
+
+    popup(_activatingButton) {
+        this._rebuildMenu();
+        this.open(BoxPointer.PopupAnimation.FULL);
+    }
+
+    _rebuildMenu() {
+        this.removeAll();
+
+        const {app} = this.sourceActor;
+        const label = app.get_name() || 'Command';
+
+        this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(label));
+
+        // Show the command
+        const cmdDesc = app.appInfo?.command;
+        if (cmdDesc) {
+            const cmdItem = new PopupMenu.PopupMenuItem(cmdDesc, {reactive: false});
+            cmdItem.label.add_style_class_name('dim-label');
+            this.addMenuItem(cmdItem);
+        }
+
+        this.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        // Run now
+        const runItem = new PopupMenu.PopupMenuItem(__('Run'));
+        runItem.connect('activate', () => {
+            app.appInfo?._executeCommand();
+        });
+        this.addMenuItem(runItem);
+
+        // Remove from dock
+        const removeItem = new PopupMenu.PopupMenuItem(__('Remove from Dock'));
+        removeItem.connect('activate', () => {
+            const commandId = app.appInfo?.commandId;
+            if (commandId) {
+                const dockManager = Docking.DockManager.getDefault();
+                dockManager.pinnedCommandsManager?.removeCommand(commandId);
+            }
+        });
+        this.addMenuItem(removeItem);
+    }
+}
+
 /**
  * @param app
  * @param monitorIndex
  * @param iconAnimator
  */
 export function makeAppIcon(app, monitorIndex, iconAnimator, window = null) {
+    if (app.appInfo instanceof PinnedCommands.CommandAppInfo)
+        return new DockCommandAppIcon(app, monitorIndex, iconAnimator);
+
     if (app.appInfo instanceof Locations.LocationAppInfo)
         return new DockLocationAppIcon(app, monitorIndex, iconAnimator);
 

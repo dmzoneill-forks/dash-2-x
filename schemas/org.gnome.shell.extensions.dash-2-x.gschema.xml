@@ -680,6 +680,15 @@
       <default>false</default>
       <summary>Enable spring-physics animations</summary>
       <description>Use spring-based physics for dock show/hide and icon transitions.</description>
+    <key name="pinned-commands" type="s">
+      <default>''</default>
+      <summary>Pinned terminal commands</summary>
+      <description>JSON array of pinned command configurations with label, command, icon, and options.</description>
+    </key>
+    <key name="show-pinned-commands" type="b">
+      <default>true</default>
+      <summary>Show pinned commands in dock</summary>
+      <description>Show pinned terminal command icons in the dock.</description>
     </key>
     <key name="show-previews-hover" type="b">
       <default>false</default>
