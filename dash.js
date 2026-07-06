@@ -322,6 +322,28 @@ export const DockDash = GObject.registerClass({
         ]);
 
         this._signalsHandler.add(this, 'destroy', this._onDestroy.bind(this));
+
+        // Wiggle mode: exit when user clicks empty dock area
+        this._wiggleClickCaptureId = 0;
+        const dockManager = Docking.DockManager.getDefault();
+        if (dockManager) {
+            this._signalsHandler.add(dockManager, 'wiggle-mode-changed',
+                (_dm, active) => this._onWiggleModeChanged(active));
+        }
+    }
+
+    _onWiggleModeChanged(active) {
+        if (active) {
+            // Listen for clicks on the background / empty areas of the dash
+            this._wiggleClickCaptureId = this._background.connect(
+                'button-release-event', () => {
+                    Docking.DockManager.getDefault().exitWiggleMode();
+                    return Clutter.EVENT_STOP;
+                });
+        } else if (this._wiggleClickCaptureId) {
+            this._background.disconnect(this._wiggleClickCaptureId);
+            this._wiggleClickCaptureId = 0;
+        }
     }
 
     vfunc_get_preferred_height(forWidth) {
@@ -345,6 +367,12 @@ export const DockDash = GObject.registerClass({
     }
 
     _onDestroy() {
+        // Clean up wiggle mode listener
+        if (this._wiggleClickCaptureId) {
+            this._background.disconnect(this._wiggleClickCaptureId);
+            this._wiggleClickCaptureId = 0;
+        }
+
         this.iconAnimator.destroy();
 
         if (this._requiresVisibilityTimeout) {

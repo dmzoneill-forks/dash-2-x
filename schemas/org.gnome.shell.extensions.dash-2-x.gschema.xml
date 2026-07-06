@@ -705,5 +705,10 @@
       <summary>Show media transport controls on dock icons</summary>
       <description>Show play/pause/skip controls when hovering over dock icons of apps currently playing audio.</description>
     </key>
+    <key name="wiggle-mode-enabled" type="b">
+      <default>true</default>
+      <summary>Enable wiggle mode for icon rearranging</summary>
+      <description>Long-press dock icons to enter wiggle mode for easier rearranging and unpinning.</description>
+    </key>
   </schema>
 </schemalist>

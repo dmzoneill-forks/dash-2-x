@@ -2187,6 +2187,10 @@ export class DockManager {
         // status variable: true when the overview is shown through the dash
         // applications button.
         this._forcedOverview = false;
+
+        // Wiggle mode state
+        this._wiggleMode = false;
+        this._wiggleEscapeCaptureId = 0;
     }
 
     static getDefault() {
@@ -2247,6 +2251,55 @@ export class DockManager {
 
     get categoryIcons() {
         return this._categoryIcons ?? [];
+    }
+
+    // ── Wiggle Mode ─────────────────────────────────────────────────────────
+
+    get wiggleMode() {
+        return this._wiggleMode;
+    }
+
+    enterWiggleMode() {
+        if (this._wiggleMode)
+            return;
+        if (!this._settings.wiggleModeEnabled)
+            return;
+
+        this._wiggleMode = true;
+        this.emit('wiggle-mode-changed', true);
+
+        // Grab Escape key to exit wiggle mode
+        this._wiggleEscapeCaptureId = global.stage.connect('captured-event', (_actor, event) => {
+            if (event.type() === Clutter.EventType.KEY_PRESS &&
+                event.get_key_symbol() === Clutter.KEY_Escape) {
+                this.exitWiggleMode();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+
+        // Exit on overview show
+        this._wiggleOverviewId = Main.overview.connect('showing', () => {
+            this.exitWiggleMode();
+        });
+    }
+
+    exitWiggleMode() {
+        if (!this._wiggleMode)
+            return;
+
+        this._wiggleMode = false;
+        this.emit('wiggle-mode-changed', false);
+
+        if (this._wiggleEscapeCaptureId) {
+            global.stage.disconnect(this._wiggleEscapeCaptureId);
+            this._wiggleEscapeCaptureId = 0;
+        }
+
+        if (this._wiggleOverviewId) {
+            Main.overview.disconnect(this._wiggleOverviewId);
+            this._wiggleOverviewId = 0;
+        }
     }
 
     // ── User-Category Management ────────────────────────────────────────────
@@ -3278,6 +3331,7 @@ export class DockManager {
     }
 
     destroy() {
+        this.exitWiggleMode();
         this.emit('destroy');
         if (this._toggleLater) {
             Utils.laterRemove(this._toggleLater);
@@ -3359,6 +3413,7 @@ export class IconAnimator {
         this._started = false;
         this._animations = {
             wiggle: [],
+            jiggle: [],
         };
         this._signalsHandler = new Utils.GlobalSignalsHandler();
         this._timeline = new Clutter.Timeline({
@@ -3381,6 +3436,14 @@ export class IconAnimator {
                 const wigglers = this._animations.wiggle;
                 for (let i = 0, iMax = wigglers.length; i < iMax; i++)
                     wigglers[i].target.rotation_angle_z = wiggleRotation;
+
+                // Jiggle animation for wiggle mode — continuous gentle rotation
+                const jigglers = this._animations.jiggle;
+                for (let i = 0, iMax = jigglers.length; i < iMax; i++) {
+                    const jiggler = jigglers[i];
+                    const angle = 2.5 * Math.sin(2 * Math.PI * progress + jiggler.phaseOffset);
+                    jiggler.target.rotation_angle_z = angle;
+                }
             },
         ]);
     }
@@ -3417,10 +3480,13 @@ export class IconAnimator {
         this._started = true;
     }
 
-    addAnimation(target, name) {
+    addAnimation(target, name, options = {}) {
         const targetDestroyId = target.connect('destroy',
             () => this.removeAnimation(target, name));
-        this._animations[name].push({target, targetDestroyId});
+        const entry = {target, targetDestroyId};
+        if (name === 'jiggle')
+            entry.phaseOffset = options.phaseOffset ?? Math.random() * 2 * Math.PI;
+        this._animations[name].push(entry);
         if (this._started && this._count === 0)
             this._timeline.start();
 
