@@ -42,6 +42,7 @@ const Labels = Object.freeze({
     DASH_LEAVE: Symbol('dash-leave'),
     SHOW_MOUNTS: Symbol('show-mounts'),
     FIRST_LAST_CHILD_WORKAROUND: Symbol('first-last-child-workaround'),
+    MAGNIFICATION: Symbol('magnification'),
 });
 
 // DragPlaceholderItem is not exported by GNOME Shell — define an equivalent locally.
@@ -319,7 +320,19 @@ export const DockDash = GObject.registerClass({
             Docking.DockManager.settings,
             'changed::show-previews-hover',
             this._togglePreviewHover.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::icon-magnification',
+            this._toggleMagnification.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::icon-magnification-factor',
+            this._toggleMagnification.bind(this),
         ]);
+
+        // Initialize magnification if enabled
+        this._magnificationEnabled = false;
+        this._toggleMagnification();
 
         this._signalsHandler.add(this, 'destroy', this._onDestroy.bind(this));
     }
@@ -346,6 +359,7 @@ export const DockDash = GObject.registerClass({
 
     _onDestroy() {
         this.iconAnimator.destroy();
+        this._disableMagnification();
 
         if (this._requiresVisibilityTimeout) {
             GLib.source_remove(this._requiresVisibilityTimeout);
@@ -1034,6 +1048,143 @@ export const DockDash = GObject.registerClass({
         appIcons.forEach(appIcon => {
             appIcon.disableHover();
         });
+    }
+
+    // ── Icon Magnification (parabolic zoom) ──────────────────────────────
+
+    _toggleMagnification() {
+        const {settings} = Docking.DockManager;
+        if (settings.iconMagnification)
+            this._enableMagnification();
+        else
+            this._disableMagnification();
+    }
+
+    _enableMagnification() {
+        if (this._magnificationEnabled)
+            return;
+        this._magnificationEnabled = true;
+
+        // Allow the box to overflow when icons are scaled up
+        this._box.set_clip_to_allocation(false);
+
+        this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
+            this._scrollView, 'motion-event',
+            this._onMagnificationMotion.bind(this));
+        this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
+            this._scrollView, 'leave-event',
+            this._onMagnificationLeave.bind(this));
+    }
+
+    _disableMagnification() {
+        if (!this._magnificationEnabled)
+            return;
+        this._magnificationEnabled = false;
+
+        this._signalsHandler.removeWithLabel(Labels.MAGNIFICATION);
+        this._resetMagnification(false);
+    }
+
+    /**
+     * Compute and apply parabolic magnification scales based on cursor
+     * position along the dock's major axis.
+     */
+    _onMagnificationMotion(actor, event) {
+        const {settings} = Docking.DockManager;
+        const maxScale = Math.max(1.0, Math.min(3.0,
+            settings.iconMagnificationFactor));
+
+        if (maxScale <= 1.0)
+            return Clutter.EVENT_PROPAGATE;
+
+        const [cursorX, cursorY] = event.get_coords();
+
+        // Get the icon children (DashItemContainers with icon children)
+        const children = this._box.get_children().filter(child =>
+            child.child && child.child.icon && !child.animatingOut);
+
+        if (children.length === 0)
+            return Clutter.EVENT_PROPAGATE;
+
+        // Spread: number of icon widths affected on each side
+        const spreadIcons = 3;
+        const spread = this.iconSize * spreadIcons;
+
+        // Pivot point: scale from the dock edge
+        // BOTTOM/RIGHT: pivot at bottom/right (1.0); TOP/LEFT: pivot at top/left (0.0)
+        let pivotX, pivotY;
+        switch (this._position) {
+        case St.Side.BOTTOM:
+            pivotX = 0.5;
+            pivotY = 1.0;
+            break;
+        case St.Side.TOP:
+            pivotX = 0.5;
+            pivotY = 0.0;
+            break;
+        case St.Side.LEFT:
+            pivotX = 0.0;
+            pivotY = 0.5;
+            break;
+        case St.Side.RIGHT:
+            pivotX = 1.0;
+            pivotY = 0.5;
+            break;
+        default:
+            pivotX = 0.5;
+            pivotY = 1.0;
+        }
+
+        for (const child of children) {
+            const [childX, childY] = child.get_transformed_position();
+            const [childW, childH] = child.get_transformed_size();
+
+            // Center of the icon in stage coordinates
+            const centerX = childX + childW / 2;
+            const centerY = childY + childH / 2;
+
+            // Distance along the dock's major axis
+            const distance = this._isHorizontal
+                ? Math.abs(cursorX - centerX)
+                : Math.abs(cursorY - centerY);
+
+            // Parabolic falloff: scale = 1 + (maxScale - 1) * max(0, 1 - (d/spread)^2)
+            const normalized = distance / spread;
+            const falloff = Math.max(0.0, 1.0 - normalized * normalized);
+            const scale = 1.0 + (maxScale - 1.0) * falloff;
+
+            child.set_pivot_point(pivotX, pivotY);
+            child.set_easing_duration(80);
+            child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+            child.set_scale(scale, scale);
+        }
+
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _onMagnificationLeave(_actor, _event) {
+        this._resetMagnification(true);
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    /**
+     * Reset all icon scales back to 1.0.
+     *
+     * @param {boolean} animate - whether to animate the transition
+     */
+    _resetMagnification(animate) {
+        const children = this._box.get_children().filter(child =>
+            child.child && child.child.icon && !child.animatingOut);
+
+        for (const child of children) {
+            if (animate) {
+                child.set_easing_duration(200);
+                child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+            } else {
+                child.set_easing_duration(0);
+            }
+            child.set_scale(1.0, 1.0);
+        }
     }
 
     _itemMenuStateChanged(item, opened) {

@@ -695,5 +695,15 @@
         6: Cascade (staggered)
       </description>
     </key>
+    <key name="icon-magnification" type="b">
+      <default>false</default>
+      <summary>Enable icon magnification on hover</summary>
+      <description>Scale up dock icons as the cursor passes over them with a parabolic falloff effect.</description>
+    </key>
+    <key name="icon-magnification-factor" type="d">
+      <default>1.5</default>
+      <summary>Maximum magnification factor</summary>
+      <description>Maximum scale factor for the icon under the cursor (1.0 to 3.0).</description>
+    </key>
   </schema>
 </schemalist>
