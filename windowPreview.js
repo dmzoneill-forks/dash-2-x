@@ -621,13 +621,9 @@ class WindowPreviewMenuItem extends PopupMenu.PopupBaseMenuItem {
 
         this._updateWindowPreviewSize();
 
-        // TODO: improve the way the closebutton is layout. Just use some padding
-        // for the moment.
-        this._cloneBin.set_style('padding-bottom: 0.5em');
-
         const buttonLayout = Meta.prefs_get_button_layout();
         this.closeButton = new St.Button({
-            style_class: 'window-close',
+            style_class: 'window-close dashtodock-preview-close-button',
             opacity: 0,
             x_expand: true,
             y_expand: true,

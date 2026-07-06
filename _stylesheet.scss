@@ -338,6 +338,11 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
     }
 }
 
+/* Window preview close button layout */
+.dashtodock-preview-close-button {
+    margin: 4px;
+}
+
 #dashtodockContainer.top.shrink #dash .dash-background {
     margin-top: 4px;
     margin-bottom: 0;
