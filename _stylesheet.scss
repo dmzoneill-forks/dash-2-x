@@ -592,6 +592,28 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
         .command-palette-result-desc {
             font-size: 11px;
             color: rgba(255, 255, 255, 0.5);
+/* Recent Files Menu */
+.recent-files-menu {
+    .recent-file-item {
+        padding: 4px 8px;
+        border-radius: 4px;
+        spacing: 8px;
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .recent-file-item-box {
+            spacing: 8px;
+        }
+
+        .recent-file-icon {
+            icon-size: 16px;
+        }
+
+        .recent-file-name {
+            font-size: 12px;
+            color: $fg_color;
         }
     }
 }
