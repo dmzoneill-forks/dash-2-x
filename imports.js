@@ -24,6 +24,7 @@ export * as ScreencastMonitor from './screencastMonitor.js';
 export * as SpringAnimation from './springAnimation.js';
 export * as PinnedCommands from './pinnedCommands.js';
 export * as RecentFilesMenu from './recentFilesMenu.js';
+export * as QuickSettings from './quickSettings.js';
 export * as Theming from './theming.js';
 export * as Utils from './utils.js';
 export * as WallpaperColorExtractor from './wallpaperColorExtractor.js';

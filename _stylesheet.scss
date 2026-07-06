@@ -625,6 +625,79 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
     }
 }
 
+/* Quick Settings Panel */
+.quick-settings-panel {
+    background-color: rgba(30, 30, 30, 0.95);
+    border-radius: 12px;
+    padding: 12px;
+    spacing: 8px;
+    width: 280px;
+}
+
+.quick-settings-row {
+    padding: 8px;
+    border-radius: 8px;
+    spacing: 10px;
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+}
+
+.quick-settings-icon {
+    icon-size: 18px;
+    color: white;
+}
+
+.quick-settings-label {
+    font-size: 13px;
+    color: white;
+}
+
+.quick-settings-toggle {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    width: 40px;
+    height: 24px;
+    padding: 2px;
+
+    &:checked {
+        background-color: rgba(60, 130, 255, 0.8);
+    }
+}
+
+.quick-settings-toggle-handle {
+    background-color: white;
+    border-radius: 10px;
+    width: 20px;
+    height: 20px;
+}
+
+.quick-settings-slider {
+    height: 20px;
+    -slider-handle-radius: 8px;
+    -slider-height: 4px;
+}
+
+.quick-settings-slider-row {
+    padding: 8px;
+    border-radius: 8px;
+    spacing: 10px;
+}
+
+.quick-settings-button {
+    padding: 8px;
+    border-radius: 8px;
+
+    &:hover {
+        background-color: $remark_color;
+    }
+}
+
+.quick-settings-button-icon {
+    icon-size: 16px;
+}
+
 #dashtodockContainer .metro .overview-icon {
     border-radius: 0px;
 }

@@ -717,6 +717,10 @@
       <default>false</default>
       <summary>Show recent files flyout on dock icons</summary>
       <description>Show recently opened files when hovering over or middle-clicking app icons in the dock.</description>
+    <key name="show-quick-settings" type="b">
+      <default>false</default>
+      <summary>Show quick settings button in dock</summary>
+      <description>Show a quick settings panel accessible from the dock.</description>
     </key>
     <key name="preview-animation-style" type="i">
       <default>4</default>

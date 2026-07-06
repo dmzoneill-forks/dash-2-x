@@ -28,6 +28,7 @@ import {
 import {
     AppIcons,
     Docking,
+    QuickSettings,
     Theming,
     Utils,
     WorkspaceMinimap,
@@ -252,6 +253,16 @@ export const DockDash = GObject.registerClass({
         this._workspaceMinimap = null;
         this._workspaceMinimapContainer = null;
         this._updateWorkspaceMinimap();
+        // Quick Settings button
+        this._quickSettingsButton = new QuickSettings.QuickSettingsButton();
+        this._quickSettingsButton.visible = Docking.DockManager.settings.showQuickSettings;
+        this._signalsHandler.add(Docking.DockManager.settings,
+            'changed::show-quick-settings', () => {
+                this._quickSettingsButton.visible =
+                    Docking.DockManager.settings.showQuickSettings;
+                this._updateQuickSettingsButton();
+            });
+        this._updateQuickSettingsButton();
 
         this._background = new St.Widget({
             style_class: 'dash-background',
@@ -432,6 +443,11 @@ export const DockDash = GObject.registerClass({
 
         this.iconAnimator.destroy();
         this._disableMagnification();
+
+        if (this._quickSettingsButton) {
+            this._quickSettingsButton.destroy();
+            this._quickSettingsButton = null;
+        }
 
         if (this._requiresVisibilityTimeout) {
             GLib.source_remove(this._requiresVisibilityTimeout);
@@ -1954,6 +1970,35 @@ export const DockDash = GObject.registerClass({
                 showAppsContainer.notify('first-child');
             if (!notifiedProperties.includes('last-child'))
                 showAppsContainer.notify('last-child');
+        }
+    }
+
+    /**
+     * Place the quick settings button at the end of the dock
+     * (after the show-apps button).
+     */
+    _updateQuickSettingsButton() {
+        if (!this._quickSettingsButton)
+            return;
+
+        const {settings} = Docking.DockManager;
+        if (!settings.showQuickSettings) {
+            if (this._quickSettingsButton.get_parent())
+                this._quickSettingsButton.get_parent().remove_child(this._quickSettingsButton);
+            return;
+        }
+
+        // Put the quick settings button in the same container as show-apps
+        const container = settings.showAppsAlwaysInTheEdge || !settings.dockExtended
+            ? this._dashContainer : this._boxContainer;
+
+        if (this._quickSettingsButton.get_parent() !== container) {
+            this._quickSettingsButton.get_parent()?.remove_child(this._quickSettingsButton);
+            // Always place after the show-apps button (at the extreme end)
+            if (settings.showAppsAtTop)
+                container.insert_child_above(this._quickSettingsButton, null);
+            else
+                container.insert_child_above(this._quickSettingsButton, null);
         }
     }
 });
