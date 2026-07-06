@@ -1302,6 +1302,28 @@ const DockSettings = GObject.registerClass({
         this._settings.bind('dock-tiling-enabled',
             this._builder.get_object('dock_tiling_enabled_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('secondary-dock-enabled',
+            this._builder.get_object('secondary_dock_enabled_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('secondary-dock-enabled',
+            this._builder.get_object('secondary_dock_position_combo'),
+            'sensitive', Gio.SettingsBindFlags.GET);
+
+        // Secondary dock position combo
+        const secondaryPositionCombo = this._builder.get_object('secondary_dock_position_combo');
+        const positionNicks = ['TOP', 'RIGHT', 'BOTTOM', 'LEFT'];
+        secondaryPositionCombo.set_active_id(
+            positionNicks[this._settings.get_enum('secondary-dock-position')]);
+        secondaryPositionCombo.connect('changed', () => {
+            const activeId = secondaryPositionCombo.get_active_id();
+            const idx = positionNicks.indexOf(activeId);
+            if (idx >= 0)
+                this._settings.set_enum('secondary-dock-position', idx);
+        });
+        this._settings.connect('changed::secondary-dock-position', () => {
+            secondaryPositionCombo.set_active_id(
+                positionNicks[this._settings.get_enum('secondary-dock-position')]);
+        });
 
         // Features tab — System Integration
         this._settings.bind('show-media-controls',

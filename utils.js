@@ -479,6 +479,20 @@ export function getPosition() {
 }
 
 /**
+ * Return the secondary dock position, reversing left and right in rtl
+ */
+export function getSecondaryPosition() {
+    const position = Docking.DockManager.settings.secondaryDockPosition;
+    if (Clutter.get_default_text_direction() === Clutter.TextDirection.RTL) {
+        if (position === St.Side.LEFT)
+            return St.Side.RIGHT;
+        else if (position === St.Side.RIGHT)
+            return St.Side.LEFT;
+    }
+    return position;
+}
+
+/**
  * @param cr
  * @param x
  * @param y

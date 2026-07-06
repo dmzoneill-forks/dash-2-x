@@ -3028,6 +3028,70 @@
                       </object>
                     </child>
 
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <property name="child">
+                          <object class="GtkGrid">
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <property name="column_spacing">32</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="hexpand">1</property>
+                                <property name="label" translatable="yes">Secondary dock (running apps)</property>
+                                <property name="xalign">0</property>
+                                <layout><property name="column">0</property><property name="row">0</property></layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSwitch" id="secondary_dock_enabled_switch">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <layout><property name="column">1</property><property name="row">0</property></layout>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <property name="child">
+                          <object class="GtkGrid">
+                            <property name="margin_start">12</property>
+                            <property name="margin_end">12</property>
+                            <property name="margin_top">12</property>
+                            <property name="margin_bottom">12</property>
+                            <property name="column_spacing">32</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="hexpand">1</property>
+                                <property name="label" translatable="yes">Secondary dock position</property>
+                                <property name="xalign">0</property>
+                                <layout><property name="column">0</property><property name="row">0</property></layout>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkComboBoxText" id="secondary_dock_position_combo">
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
+                                <items>
+                                  <item id="TOP" translatable="yes">Top</item>
+                                  <item id="RIGHT" translatable="yes">Right</item>
+                                  <item id="BOTTOM" translatable="yes">Bottom</item>
+                                  <item id="LEFT" translatable="yes">Left</item>
+                                </items>
+                                <layout><property name="column">1</property><property name="row">0</property></layout>
+                              </object>
+                            </child>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+
                   </object>
                 </property>
                 <child type="label_item">

@@ -156,7 +156,7 @@ export const DockDash = GObject.registerClass({
         'icon-size-changed': {},
     },
 }, class DockDash extends St.Widget {
-    _init(monitorIndex) {
+    _init(monitorIndex, isSecondary = false) {
         // Initialize icon variables and size
         super._init({
             name: 'dash',
@@ -164,6 +164,7 @@ export const DockDash = GObject.registerClass({
             layout_manager: new Clutter.BinLayout(),
         });
 
+        this._isSecondary = isSecondary;
         this._maxWidth = -1;
         this._maxHeight = -1;
         this.iconSize = Docking.DockManager.settings.dashMaxIconSize;
@@ -176,7 +177,7 @@ export const DockDash = GObject.registerClass({
         this._separatorLocations = null;
 
         this._monitorIndex = monitorIndex;
-        this._position = Utils.getPosition();
+        this._position = isSecondary ? Utils.getSecondaryPosition() : Utils.getPosition();
         this._isHorizontal = (this._position === St.Side.TOP) ||
                                (this._position === St.Side.BOTTOM);
 
@@ -503,6 +504,10 @@ export const DockDash = GObject.registerClass({
     }
 
     handleDragOver(source, actor, x, y, _time) {
+        // Secondary docks don't support drag-and-drop reordering
+        if (this._isSecondary)
+            return DND.DragMotionResult.NO_DROP;
+
         const app = source?.app ?? source?._delegate?.app;
         if (!app)
             return DND.DragMotionResult.NO_DROP;
@@ -1470,6 +1475,12 @@ export const DockDash = GObject.registerClass({
         const dockManager = Docking.DockManager.getDefault();
         const {settings} = dockManager;
 
+        // Secondary docks show only running (non-favorite) apps
+        if (this._isSecondary) {
+            this._redisplaySecondary();
+            return;
+        }
+
         // Apps that are in a user category are not shown as standalone icons
         const categorizedAppIds = dockManager.getCategorizedAppIds?.() ?? new Set();
 
@@ -1820,6 +1831,173 @@ export const DockDash = GObject.registerClass({
         this.updateShowAppsButton();
 
         // Connect windows previews to hover events if enabled
+        this._togglePreviewHover();
+    }
+
+    /**
+     * Simplified _redisplay for secondary docks: shows only running apps
+     * that are not in the favorites list. No favorites, no categories,
+     * no locations, no pinned commands, no show-apps button.
+     */
+    _redisplaySecondary() {
+        const dockManager = Docking.DockManager.getDefault();
+        const {settings} = dockManager;
+
+        const favorites = AppFavorites.getAppFavorites().getFavoriteMap();
+        let running = this._appSystem.get_running();
+
+        this._scrollView.set({
+            xAlign: Clutter.ActorAlign.FILL,
+            yAlign: Clutter.ActorAlign.FILL,
+        });
+        if (dockManager.settings.dockExtended) {
+            if (!this._isHorizontal) {
+                this._scrollView.yAlign = dockManager.settings.alwaysCenterIcons
+                    ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
+            } else {
+                this._scrollView.xAlign = dockManager.settings.alwaysCenterIcons
+                    ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
+            }
+        }
+
+        if (settings.isolateWorkspaces ||
+            settings.isolateMonitors) {
+            const monitorIndex = this._monitorIndex;
+            running = running.filter(app =>
+                AppIcons.getInterestingWindows(app.get_windows(), monitorIndex).length);
+        }
+
+        const children = this._box.get_children().filter(actor => {
+            return actor.child &&
+                   actor.child._delegate &&
+                   actor.child._delegate.app;
+        });
+        const oldItems = children.map(actor => actor.child._delegate);
+        const oldApps = [];
+        oldItems.forEach(({app}) => {
+            if (!oldApps.includes(app))
+                oldApps.push(app);
+        });
+
+        // Only running apps that are NOT favorites
+        const newApps = [];
+        const addedRunning = new Set();
+        // Preserve order from oldApps for stability
+        oldApps.forEach(oldApp => {
+            const index = running.indexOf(oldApp);
+            if (index > -1) {
+                const [app] = running.splice(index, 1);
+                const appId = app.get_id();
+                if (!(appId in favorites) && !addedRunning.has(appId)) {
+                    newApps.push(app);
+                    addedRunning.add(appId);
+                }
+            }
+        });
+        running.forEach(app => {
+            const appId = app.get_id();
+            if (!(appId in favorites) && !addedRunning.has(appId)) {
+                newApps.push(app);
+                addedRunning.add(appId);
+            }
+        });
+
+        // Remove separators if present
+        if (this._separatorFavorites)
+            this._box.remove_child(this._separatorFavorites);
+        if (this._separatorLocations)
+            this._box.remove_child(this._separatorLocations);
+
+        // Build expected items (no split-window in secondary for simplicity)
+        const expectedItems = [];
+        for (const app of newApps) {
+            const windows = !settings.groupApps
+                ? AppIcons.getInterestingWindows(app.get_windows(), this._monitorIndex)
+                    .sort((a, b) => a.get_stable_sequence() - b.get_stable_sequence())
+                : [];
+            const shouldSplit = !settings.groupApps && windows.length > 0;
+            if (shouldSplit) {
+                windows.forEach(window => {
+                    expectedItems.push({app, window, isFavorite: false});
+                });
+            } else {
+                expectedItems.push({app, window: null, isFavorite: false});
+            }
+        }
+
+        // Figure out changes
+        const addedItems = [];
+        const removedActors = [];
+        const itemMatches = (delegate, expectedItem) =>
+            delegate.app === expectedItem.app &&
+            (delegate.window ?? null) === (expectedItem.window ?? null);
+
+        const expectedUsed = new Array(expectedItems.length).fill(false);
+        for (let i = children.length - 1; i >= 0; i--) {
+            const delegate = children[i].child._delegate;
+            const matchIndex = expectedItems.findIndex((expectedItem, idx) =>
+                !expectedUsed[idx] && itemMatches(delegate, expectedItem));
+            if (matchIndex < 0) {
+                removedActors.push(children[i]);
+            } else {
+                expectedUsed[matchIndex] = true;
+                const actor = children[i];
+                if (actor.animatingOut) {
+                    actor.remove_all_transitions();
+                    actor.animatingOut = false;
+                    actor.set({scale_x: 1, scale_y: 1, opacity: 255});
+                }
+            }
+        }
+
+        for (let i = 0; i < removedActors.length; i++) {
+            const item = removedActors[i];
+            if (!Main.overview.animationInProgress)
+                item.animateOutAndDestroy();
+            else
+                item.destroy();
+        }
+
+        const currentActors = this._box.get_children().filter(actor =>
+            actor.child && actor.child._delegate && actor.child._delegate.app);
+
+        for (let i = 0; i < expectedItems.length; i++) {
+            const expectedItem = expectedItems[i];
+            const matchIndex = currentActors.findIndex((actor, idx) =>
+                idx >= i && itemMatches(actor.child._delegate, expectedItem));
+
+            if (matchIndex < 0) {
+                const item = this._createAppItem(expectedItem.app, expectedItem.window);
+                this._box.insert_child_at_index(item, i);
+                currentActors.splice(i, 0, item);
+                addedItems.push({app: expectedItem.app, item});
+            } else if (matchIndex !== i) {
+                const [item] = currentActors.splice(matchIndex, 1);
+                this._box.remove_child(item);
+                this._box.insert_child_at_index(item, i);
+                currentActors.splice(i, 0, item);
+            }
+        }
+
+        // No separators on secondary dock
+        if (this._separatorFavorites) {
+            this._separatorFavorites.destroy();
+            this._separatorFavorites = null;
+        }
+        if (this._separatorLocations) {
+            this._separatorLocations.destroy();
+            this._separatorLocations = null;
+        }
+
+        this._adjustIconSize();
+
+        const animate = this._shownInitially && !Main.layoutManager._startingUp;
+        if (!this._shownInitially)
+            this._shownInitially = true;
+
+        addedItems.forEach(({item}) => item.show(animate));
+        this._box.queue_relayout();
+        this._updateNumberOverlay();
         this._togglePreviewHover();
     }
 
