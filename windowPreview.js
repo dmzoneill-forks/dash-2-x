@@ -43,6 +43,7 @@ const Labels = Object.freeze({
     HOVER: Symbol('hover'),
     WINDOW_ADDED: Symbol('window-added'),
 });
+const ACTIVE_WINDOW_PREVIEW_CLASS = 'active-window-preview';
 
 export class WindowPreviewMenu extends PopupMenu.PopupMenu {
     constructor(source) {
@@ -118,25 +119,31 @@ export class WindowPreviewMenu extends PopupMenu.PopupMenu {
 
             if (!this.isOpen) {
                 this.open(BoxPointer.PopupAnimation.FULL);
+
+                // Find the preview item for the currently active window
+                // so we can highlight and scroll to it.
+                const focusWindow = global.display.focus_window;
+                let activeItem = null;
+                if (focusWindow && this._previewBox) {
+                    const items = this._previewBox._getMenuItems()
+                        .filter(item => item._window);
+                    activeItem = items.find(
+                        item => item._window === focusWindow) ?? null;
+                }
+
                 if (!this.fromHover) {
-                    // Focus the preview item for the currently active window
-                    // instead of always focusing the first item, so that the
-                    // user sees the correct window highlighted.
-                    const focusWindow = global.display.focus_window;
-                    let focusTarget = null;
-                    if (focusWindow && this._previewBox) {
-                        const items = this._previewBox._getMenuItems()
-                            .filter(item => item._window);
-                        const activeItem = items.find(
-                            item => item._window === focusWindow);
-                        if (activeItem)
-                            focusTarget = activeItem;
-                    }
-                    if (focusTarget)
-                        focusTarget.grab_key_focus();
+                    // For keyboard/click activation, give key focus to the
+                    // active window's preview so it is visually selected.
+                    if (activeItem)
+                        activeItem.grab_key_focus();
                     else
                         this.actor.navigate_focus(null, St.DirectionType.TAB_FORWARD, false);
                 }
+
+                // Scroll to the active item so it is visible when the
+                // preview list is longer than the available space.
+                if (activeItem && this._previewBox)
+                    this._previewBox._scrollToItem(activeItem);
             }
 
             this._source.emit('sync-tooltip');
@@ -547,6 +554,11 @@ class WindowPreviewList extends PopupMenu.PopupMenuSection {
         for (let i = 0; i < addedItems.length; i++)
             addedItems[i].item.show(animate);
 
+        // Mark the preview item for the currently focused window so that it
+        // gets a visual highlight, regardless of whether the menu was opened
+        // via hover or click.
+        this._markActiveWindow();
+
         // Workaround for https://bugzilla.gnome.org/show_bug.cgi?id=692744
         // Without it, StBoxLayout may use a stale size cache
         this.box.queue_relayout();
@@ -573,6 +585,48 @@ class WindowPreviewList extends PopupMenu.PopupMenuSection {
             this.actor.add_style_pseudo_class('scrolled');
         else
             this.actor.remove_style_pseudo_class('scrolled');
+    }
+
+    _markActiveWindow() {
+        const focusWindow = global.display.focus_window;
+        const items = this._getMenuItems().filter(item => item._window);
+
+        for (const item of items) {
+            if (focusWindow && item._window === focusWindow)
+                item.add_style_class_name(ACTIVE_WINDOW_PREVIEW_CLASS);
+            else
+                item.remove_style_class_name(ACTIVE_WINDOW_PREVIEW_CLASS);
+        }
+    }
+
+    _scrollToItem(item) {
+        // Ensure the given preview item is visible within the scroll view.
+        if (!item || !this.actor)
+            return;
+
+        const adjustment = this.isHorizontal
+            ? this.actor.get_hscroll_bar().get_adjustment()
+            : this.actor.get_vscroll_bar().get_adjustment();
+
+        const [value, , upper, , , pageSize] = adjustment.get_values();
+
+        // Get the item's position relative to the scrollable box.
+        const [ok, x, y] = item.translate_coordinates(this.box, 0, 0);
+        if (!ok)
+            return;
+
+        const itemPos = this.isHorizontal ? x : y;
+        const itemSize = this.isHorizontal ? item.get_width() : item.get_height();
+
+        // If the item is already fully visible, do nothing.
+        if (itemPos >= value && itemPos + itemSize <= value + pageSize)
+            return;
+
+        // Scroll so the item is centered in the viewport if possible.
+        const target = Math.max(0, Math.min(
+            itemPos - (pageSize - itemSize) / 2,
+            upper - pageSize));
+        adjustment.set_value(target);
     }
 
     _needsScrollbar() {

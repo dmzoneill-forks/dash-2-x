@@ -341,6 +341,10 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
 /* Window preview close button layout */
 .dashtodock-preview-close-button {
     margin: 4px;
+/* Highlight the preview item for the currently focused/active window */
+.dashtodock-app-well-preview-menu-item.active-window-preview {
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
 }
 
 #dashtodockContainer.top.shrink #dash .dash-background {
