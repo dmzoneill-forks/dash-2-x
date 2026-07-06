@@ -1746,23 +1746,13 @@ export const DockShowAppsIcon = GObject.registerClass({
     }
 
     vfunc_button_press_event(...args) {
-        try {
-            // TODO: Drop this when not supporting GNOME 48 (and older) anymore.
-            return AppDisplay.AppIcon.prototype.vfunc_button_press_event.call(
-                this.toggleButton, ...args);
-        } catch {
-            return Clutter.EVENT_PROPAGATE;
-        }
+        return AppDisplay.AppIcon.prototype.vfunc_button_press_event.call(
+            this.toggleButton, ...args);
     }
 
     vfunc_touch_event(...args) {
-        try {
-            // TODO: Drop this when not supporting GNOME 48 (and older) anymore.
-            return AppDisplay.AppIcon.prototype.vfunc_touch_event.call(
-                this.toggleButton, ...args);
-        } catch {
-            return Clutter.EVENT_PROPAGATE;
-        }
+        return AppDisplay.AppIcon.prototype.vfunc_touch_event.call(
+            this.toggleButton, ...args);
     }
 
     showLabel(...args) {
