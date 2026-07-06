@@ -37,6 +37,7 @@ import {
     MediaControls,
     Theming,
     Utils,
+    VolumeMenuItem,
     WindowPreview,
 } from './imports.js';
 
@@ -1594,6 +1595,7 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
 
         delete this._allWindowsMenuItem;
         delete this._quitMenuItem;
+        delete this._volumeMenuItem;
     }
 
     _rebuildMenu() {
@@ -1800,6 +1802,22 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
         const dynamicSection = new PopupMenu.PopupMenuSection();
         this.addMenuItem(dynamicSection, i);
         this.emit('dynamic-section-changed', dynamicSection);
+
+        // Per-app volume control
+        this._volumeMenuItem = null;
+        if (Docking.DockManager.settings.showVolumeControl) {
+            const {volumeControl} = Docking.DockManager.getDefault();
+            if (volumeControl) {
+                const stream = volumeControl.getStreamForApp(
+                    this.sourceActor.app);
+                if (stream) {
+                    this._appendSeparator();
+                    this._volumeMenuItem = new VolumeMenuItem.VolumeMenuItem(
+                        stream, volumeControl);
+                    this.addMenuItem(this._volumeMenuItem);
+                }
+            }
+        }
 
         // quit menu
         this._appendSeparator();

@@ -606,3 +606,38 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
     width: 8px;
     height: 8px;
 }
+/* Per-app volume control in dock context menu */
+.dock-volume-menu-item {
+    padding: 4px 12px;
+
+    .dock-volume-box {
+        spacing: 8px;
+    }
+
+    .dock-volume-label {
+        font-size: 0.9em;
+        font-weight: bold;
+        color: rgba(255, 255, 255, 0.7);
+        margin-right: 4px;
+    }
+
+    .dock-volume-mute-button {
+        padding: 4px;
+        border-radius: 4px;
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dock-volume-icon {
+            icon-size: 16px;
+        }
+    }
+
+    .dock-volume-percent {
+        font-size: 0.85em;
+        color: rgba(255, 255, 255, 0.7);
+        min-width: 40px;
+        text-align: right;
+    }
+}

@@ -22,5 +22,7 @@ export * as SpringAnimation from './springAnimation.js';
 export * as Theming from './theming.js';
 export * as Utils from './utils.js';
 export * as WallpaperColorExtractor from './wallpaperColorExtractor.js';
+export * as VolumeControl from './volumeControl.js';
+export * as VolumeMenuItem from './volumeMenuItem.js';
 export * as WindowPreview from './windowPreview.js';
 export * as WorkspaceMinimap from './workspaceMinimap.js';
