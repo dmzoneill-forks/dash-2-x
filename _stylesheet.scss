@@ -505,6 +505,30 @@ $dock_style_modes: null, shrink, extended, extended-shrink;
     margin: 32px 0px;
 }
 
+/* Workspace minimap indicator strip */
+.workspace-minimap {
+    spacing: 3px;
+    padding: 4px;
+
+    .workspace-minimap-indicator {
+        background-color: rgba(255, 255, 255, 0.25);
+        border-radius: 3px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        min-width: 20px;
+        min-height: 14px;
+        transition-duration: 150ms;
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        &.active {
+            background-color: rgba(255, 255, 255, 0.7);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+    }
+}
+
 #dashtodockContainer .metro .overview-icon {
     border-radius: 0px;
 }

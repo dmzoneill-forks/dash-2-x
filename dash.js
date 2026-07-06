@@ -30,6 +30,7 @@ import {
     Docking,
     Theming,
     Utils,
+    WorkspaceMinimap,
 } from './imports.js';
 
 // module "Dash" did not export DASH_ANIMATION_TIME in old versions
@@ -246,6 +247,11 @@ export const DockDash = GObject.registerClass({
             });
         this.updateShowAppsButton();
 
+        // Workspace minimap indicator
+        this._workspaceMinimap = null;
+        this._workspaceMinimapContainer = null;
+        this._updateWorkspaceMinimap();
+
         this._background = new St.Widget({
             style_class: 'dash-background',
             y_expand: this._isHorizontal,
@@ -319,6 +325,14 @@ export const DockDash = GObject.registerClass({
             Docking.DockManager.settings,
             'changed::show-previews-hover',
             this._togglePreviewHover.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::show-workspace-minimap',
+            this._updateWorkspaceMinimap.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::workspace-minimap-position',
+            this._updateWorkspaceMinimap.bind(this),
         ]);
 
         this._signalsHandler.add(this, 'destroy', this._onDestroy.bind(this));
@@ -342,6 +356,38 @@ export const DockDash = GObject.registerClass({
 
     get _container() {
         return this._dashContainer;
+    }
+
+    /**
+     * Create, destroy, or reposition the workspace minimap based on
+     * the current settings.
+     */
+    _updateWorkspaceMinimap() {
+        const {settings} = Docking.DockManager;
+        const enabled = settings.showWorkspaceMinimap;
+
+        // Tear down existing minimap
+        if (this._workspaceMinimapContainer) {
+            this._workspaceMinimapContainer.destroy();
+            this._workspaceMinimapContainer = null;
+            this._workspaceMinimap = null;
+        }
+
+        if (!enabled)
+            return;
+
+        // Create the minimap and wrap it in a DockDashItemContainer
+        this._workspaceMinimap = new WorkspaceMinimap.WorkspaceMinimap();
+        this._workspaceMinimapContainer = new DockDashItemContainer(this._position);
+        this._workspaceMinimapContainer.setChild(this._workspaceMinimap);
+        this._workspaceMinimapContainer.show(false);
+
+        // Place at start or end of the box container
+        const atStart = settings.workspaceMinimapPosition === 'start';
+        if (atStart)
+            this._boxContainer.insert_child_below(this._workspaceMinimapContainer, null);
+        else
+            this._boxContainer.insert_child_above(this._workspaceMinimapContainer, null);
     }
 
     _onDestroy() {

@@ -18,3 +18,4 @@ export * as NotificationsMonitor from './notificationsMonitor.js';
 export * as Theming from './theming.js';
 export * as Utils from './utils.js';
 export * as WindowPreview from './windowPreview.js';
+export * as WorkspaceMinimap from './workspaceMinimap.js';
