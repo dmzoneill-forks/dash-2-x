@@ -607,7 +607,7 @@ export const DockDash = GObject.registerClass({
         if (!inCategoryId) {
             const dockManager = Docking.DockManager.getDefault();
             const itemId = isCustom ? app._categoryData?.id : app.get_id?.();
-            if (itemId) {
+            if (dockManager && itemId) {
                 const dockOrder = dockManager.getDockOrder();
                 const currentOrderPos = dockOrder.indexOf(itemId);
                 if (currentOrderPos >= 0) {
@@ -680,6 +680,8 @@ export const DockDash = GObject.registerClass({
         const isCustom = !!app.isCustom;
         const inCategoryId = source?._d2dInCategoryId ?? source?._delegate?._d2dInCategoryId;
         const dockManager = Docking.DockManager.getDefault();
+        if (!dockManager)
+            return false;
 
         // Categorized running apps cannot be repositioned via D&D
         if (!isCustom && !inCategoryId) {
@@ -1473,6 +1475,8 @@ export const DockDash = GObject.registerClass({
 
     _redisplay() {
         const dockManager = Docking.DockManager.getDefault();
+        if (!dockManager)
+            return;
         const {settings} = dockManager;
 
         // Secondary docks show only running (non-favorite) apps

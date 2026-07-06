@@ -74,7 +74,10 @@ export class AppIconsDecorator {
     }
 
     _decorateIcons() {
-        const {appDisplay} = Docking.DockManager.getDefault().overviewControls;
+        const dockManager = Docking.DockManager.getDefault();
+        if (!dockManager)
+            return;
+        const {appDisplay} = dockManager.overviewControls;
 
         const decorateAppIcons = () => {
             this._signals.removeWithLabel(Labels.ICONS);
