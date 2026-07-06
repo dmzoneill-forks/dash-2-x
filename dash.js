@@ -1471,7 +1471,8 @@ export const DockDash = GObject.registerClass({
         const currentActors = this._box.get_children().filter(actor =>
             actor.child &&
             actor.child._delegate &&
-            actor.child._delegate.app);
+            actor.child._delegate.app &&
+            !actor.animatingOut);
 
         for (let i = 0; i < expectedItems.length; i++) {
             const expectedItem = expectedItems[i];
@@ -1503,6 +1504,20 @@ export const DockDash = GObject.registerClass({
                     }
                 }
             }
+        }
+
+        // Refresh window state on surviving (non-new) icons.  When the
+        // favorites list changes the icon list is rebuilt, but surviving icons
+        // keep their old windowsCount / running state because no
+        // 'windows-changed' signal fires.  Calling _updateWindows() here
+        // ensures the indicators stay in sync with reality (#2484).
+        const addedItemSet = new Set(addedItems.map(({item}) => item));
+        for (const actor of currentActors) {
+            if (addedItemSet.has(actor))
+                continue;
+            const delegate = actor.child?._delegate;
+            if (delegate && typeof delegate._updateWindows === 'function')
+                delegate._updateWindows();
         }
 
         // Update separator
