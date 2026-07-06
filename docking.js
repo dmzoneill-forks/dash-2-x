@@ -3420,10 +3420,20 @@ export class DockManager {
 
             const hadOverview = Main.sessionMode.hasOverview;
 
-            // Convince LayoutManager to use the legacy startup animation:
-            // Reset overview controls state to HIDDEN, as skipping the startup
-            // overview leaves it stuck at WINDOW_PICKER
             if (this._settings.disableOverviewOnStartup) {
+                // Tell LayoutManager to skip the overview startup animation
+                // entirely. In GNOME 50+ _startupAnimationSession() is async
+                // and checks hasOverview to decide whether to run the overview
+                // entrance animation.  Setting it to false makes it use the
+                // simple scale/fade path instead, which never opens the overview.
+                Main.sessionMode.hasOverview = false;
+
+                // Legacy fallback (GNOME < 50): inject a property override on
+                // OverviewAdjustment.prototype.value so the adjustment always
+                // reports HIDDEN during startup.  In GNOME 50+ `value` is a
+                // native GObject property on St.Adjustment, so this override is
+                // ineffective — the hasOverview=false approach above is the
+                // primary mechanism.
                 const {OverviewAdjustment} = OverviewControls;
                 this._propertyInjections.addWithLabel(Labels.STARTUP_ANIMATION,
                     OverviewAdjustment.prototype, 'value', {
@@ -3448,6 +3458,16 @@ export class DockManager {
                     this._runStartupAnimation();
                     if (this._settings.disableOverviewOnStartup) {
                         this._propertyInjections.removeWithLabel(Labels.STARTUP_ANIMATION);
+
+                        // Force the overview closed if it is still visible.
+                        // In GNOME 50+ the async startup animation may have
+                        // already shown the overview before our hasOverview
+                        // override took effect (race with extension load
+                        // timing).  Calling hide() is safe even if the
+                        // overview is already hidden.
+                        if (Main.overview.visible)
+                            Main.overview.hide();
+
                         // Guard: only reset state if overview is not currently
                         // in a transition (SHOWING/HIDING) to avoid invalid
                         // state machine transitions (SHOWING -> SHOWING).
