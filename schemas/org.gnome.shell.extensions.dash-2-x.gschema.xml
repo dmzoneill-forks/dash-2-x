@@ -725,6 +725,10 @@
       <default>false</default>
       <summary>Show quick settings button in dock</summary>
       <description>Show a quick settings panel accessible from the dock.</description>
+    <key name="drag-to-focus" type="b">
+      <default>true</default>
+      <summary>Focus app window when dragging over dock icon</summary>
+      <description>Raise and focus an application window when an external file is dragged over its dock icon.</description>
     </key>
     <key name="preview-animation-style" type="i">
       <default>4</default>

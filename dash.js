@@ -459,6 +459,7 @@ export const DockDash = GObject.registerClass({
             GLib.source_remove(this._resetIconsDebounceId);
             this._resetIconsDebounceId = 0;
         }
+        this._cancelDragToFocus();
 
         if (this._requiresVisibilityTimeout) {
             GLib.source_remove(this._requiresVisibilityTimeout);
@@ -481,10 +482,12 @@ export const DockDash = GObject.registerClass({
     }
 
     _onItemDragEnd(...args) {
+        this._cancelDragToFocus();
         return Dash.Dash.prototype._onItemDragEnd.call(this, ...args);
     }
 
     _endItemDrag(...args) {
+        this._cancelDragToFocus();
         return Dash.Dash.prototype._endItemDrag.call(this, ...args);
     }
 
@@ -535,8 +538,15 @@ export const DockDash = GObject.registerClass({
             return DND.DragMotionResult.NO_DROP;
 
         const app = source?.app ?? source?._delegate?.app;
-        if (!app)
+        if (!app) {
+            // External drag (e.g. file from Nautilus) — check if hovering
+            // over an app icon and focus its window after a short delay.
+            this._handleExternalDragOver(x, y);
             return DND.DragMotionResult.NO_DROP;
+        }
+
+        // Cancel any pending drag-to-focus when handling a dock icon drag
+        this._cancelDragToFocus();
 
         const isCustom = !!app.isCustom;
         // App from CategoryPanel (has _d2dInCategoryId set)
@@ -740,6 +750,8 @@ export const DockDash = GObject.registerClass({
     }
 
     acceptDrop(source, _actor, _x, _y, _time) {
+        this._cancelDragToFocus();
+
         const app = source?.app ?? source?._delegate?.app;
         if (!app)
             return false;
@@ -943,6 +955,68 @@ export const DockDash = GObject.registerClass({
         return true;
     }
 
+    /**
+     * Handle external drag (e.g. file from Nautilus) hovering over app icons.
+     * After a short delay, focus/raise the app's most recent window so the
+     * user can drop the file into it.
+     */
+    _handleExternalDragOver(x, y) {
+        if (!Docking.DockManager.settings.dragToFocus)
+            return;
+
+        // Convert local coords to stage-space along the dock axis
+        const [dashX, dashY] = this.get_transformed_position();
+        const cursorX = dashX + x;
+        const cursorY = dashY + y;
+
+        // Find which app icon the cursor is over
+        const children = this._box.get_children();
+        let hoveredAppIcon = null;
+        for (const child of children) {
+            if (!child.child?._delegate?.app)
+                continue;
+            const [cx, cy] = child.get_transformed_position();
+            const [cw, ch] = child.get_transformed_size();
+            if (cursorX >= cx && cursorX <= cx + cw &&
+                cursorY >= cy && cursorY <= cy + ch) {
+                hoveredAppIcon = child.child._delegate;
+                break;
+            }
+        }
+
+        // If cursor moved to a different icon or left all icons, reset timer
+        if (hoveredAppIcon !== this._dragToFocusIcon) {
+            this._cancelDragToFocus();
+            this._dragToFocusIcon = hoveredAppIcon;
+
+            if (hoveredAppIcon && hoveredAppIcon.running) {
+                this._dragToFocusTimeoutId = GLib.timeout_add(
+                    GLib.PRIORITY_DEFAULT, 500, () => {
+                        this._dragToFocusTimeoutId = 0;
+                        if (this._dragToFocusIcon === hoveredAppIcon) {
+                            const windows = hoveredAppIcon.getInterestingWindows();
+                            if (windows.length > 0) {
+                                const window = windows[0];
+                                window.activate(global.get_current_time());
+                            }
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
+            }
+        }
+    }
+
+    /**
+     * Cancel any pending drag-to-focus timer.
+     */
+    _cancelDragToFocus() {
+        if (this._dragToFocusTimeoutId) {
+            GLib.source_remove(this._dragToFocusTimeoutId);
+            this._dragToFocusTimeoutId = 0;
+        }
+        this._dragToFocusIcon = null;
+    }
+
     _clearDragPlaceholder() {
         if (this._dragPlaceholder) {
             this._dragPlaceholder.animateOutAndDestroy();
@@ -963,6 +1037,7 @@ export const DockDash = GObject.registerClass({
     }
 
     _onWindowDragEnd(...args) {
+        this._cancelDragToFocus();
         return Dash.Dash.prototype._onWindowDragEnd.call(this, ...args);
     }
 
