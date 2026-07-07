@@ -6,7 +6,9 @@ import {Gio} from './dependencies/gi.js';
 import {DBusMenuUtils} from './imports.js';
 
 let DBusMenu = null;
-DBusMenuUtils.haveDBusMenu().then(m => { DBusMenu = m; });
+DBusMenuUtils.haveDBusMenu().then(m => {
+    DBusMenu = m;
+});
 
 export class LauncherEntryRemoteModel {
     constructor() {

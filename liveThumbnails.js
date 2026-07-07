@@ -4,8 +4,6 @@
 import {
     Clutter,
     GLib,
-    GObject,
-    Meta,
     St,
 } from './dependencies/gi.js';
 
@@ -183,9 +181,8 @@ export class LiveThumbnailManager {
         // Insert the clone bin into the icon container at position 0 so it
         // sits behind the number-overlay and other decorations.
         const iconContainer = this._appIcon._iconContainer;
-        if (iconContainer) {
+        if (iconContainer)
             iconContainer.insert_child_at_index(this._cloneBin, 0);
-        }
     }
 
     /**
@@ -201,7 +198,7 @@ export class LiveThumbnailManager {
             return;
 
         // Scale factor for HiDPI.
-        const scaleFactor = St.ThemeContext.get_for_stage(global.stage).scaleFactor;
+        const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
         const targetSize = iconSize * scaleFactor;
 
         const [winWidth, winHeight] = this._mutterWindow.get_size();

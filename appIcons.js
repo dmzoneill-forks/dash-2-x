@@ -66,7 +66,9 @@ const {gettext: __, ngettext} = Extension;
 const MAX_TOOLTIP_LABEL_WIDTH_PX = 700;
 
 let DBusMenu = null;
-DBusMenuUtils.haveDBusMenu().then(m => { DBusMenu = m; });
+DBusMenuUtils.haveDBusMenu().then(m => {
+    DBusMenu = m;
+});
 
 const tracker = Shell.WindowTracker.get_default();
 
@@ -1186,7 +1188,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
     _recentFiles() {
         if (!RecentFilesMenu)
-            return;
+            return false;
         if (!this._recentFilesMenuInstance) {
             this._recentFilesMenuManager = new PopupMenu.PopupMenuManager(this);
 
@@ -2101,11 +2103,11 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
         const showBadgeItem = new PopupMenu.PopupMenuItem(
             isEnabled ? __('Badge: Shown') : __('Badge: Hidden'));
         const toggleIcon = isEnabled ? 'object-select-symbolic' : '';
-        if (toggleIcon) {
+        if (toggleIcon)
             showBadgeItem.setOrnament(PopupMenu.Ornament.CHECK);
-        } else {
+        else
             showBadgeItem.setOrnament(PopupMenu.Ornament.NONE);
-        }
+
         showBadgeItem.connect('activate', () => {
             const newEnabled = !isEnabled;
             const newConfig = {...override, enabled: newEnabled};

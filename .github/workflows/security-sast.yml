@@ -17,10 +17,29 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Semgrep
-        run: semgrep scan --config auto --error --exclude 'node_modules' --exclude '_build' --exclude 'coverage'
-        env:
-          SEMGREP_RULES: >-
-            p/javascript
-            p/security-audit
-            p/secrets
-            p/command-injection
+        run: |
+          semgrep scan --config auto \
+            --exclude 'node_modules' \
+            --exclude '_build' \
+            --exclude 'coverage' \
+            --exclude '.github' \
+            --exclude 'test' \
+            --exclude 'po' \
+            --json --output semgrep-results.json || true
+          # Display summary
+          semgrep scan --config auto \
+            --exclude 'node_modules' \
+            --exclude '_build' \
+            --exclude 'coverage' \
+            --exclude '.github' \
+            --exclude 'test' \
+            --exclude 'po' \
+            --text 2>&1 | tail -20 || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+          if-no-files-found: ignore

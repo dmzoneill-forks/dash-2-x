@@ -570,9 +570,9 @@ export const DockDash = GObject.registerClass({
             });
         if (this._dragInProgress) {
             this._redisplayQueuedDuringDrag = true;
-            return undefined;
+            return;
         }
-        return Dash.Dash.prototype._queueRedisplay.call(this, ...args);
+        Dash.Dash.prototype._queueRedisplay.call(this, ...args);
     }
 
     _hookUpLabel(...args) {
@@ -1772,7 +1772,7 @@ export const DockDash = GObject.registerClass({
                    actor.child._delegate.app;
         });
         const oldItems = children.map(actor => actor.child._delegate);
-        let oldApps = [];
+        const oldApps = [];
         oldItems.forEach(({app}) => {
             if (!oldApps.includes(app))
                 oldApps.push(app);

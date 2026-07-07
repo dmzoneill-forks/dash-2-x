@@ -51,7 +51,9 @@ export async function haveDBusMenu() {
 }
 
 let DBusMenu = null;
-haveDBusMenu().then(m => { DBusMenu = m; });
+haveDBusMenu().then(m => {
+    DBusMenu = m;
+});
 
 /**
  * @param dbusmenuItem

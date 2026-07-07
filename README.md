@@ -1,7 +1,12 @@
 # XDock
 
 [![Test](https://github.com/dmzoneill-forks/xdock/actions/workflows/test.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/test.yml)
+[![Make](https://github.com/dmzoneill-forks/xdock/actions/workflows/make.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/make.yml)
 [![shexli](https://github.com/dmzoneill-forks/xdock/actions/workflows/shexli.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/shexli.yml)
+[![CodeQL](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-codeql.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-codeql.yml)
+[![Dependency Scan](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-dependencies.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-dependencies.yml)
+[![SAST](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-sast.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-sast.yml)
+[![Secret Scan](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-secrets.yml/badge.svg)](https://github.com/dmzoneill-forks/xdock/actions/workflows/security-secrets.yml)
 
 A community-driven dock for the GNOME Shell.
 
