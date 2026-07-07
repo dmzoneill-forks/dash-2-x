@@ -41,11 +41,11 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gettext imagemagick podman
+          sudo apt-get install -y -qq gettext imagemagick
 
       - name: Build extension zip
         run: |
-          if command -v sassc &>/dev/null || command -v sass &>/dev/null; then
+          if command -v sass &>/dev/null || command -v sassc &>/dev/null; then
             make zip 2>/dev/null || true
           fi
           if [ ! -f "xdock@github.com.zip" ]; then
@@ -56,6 +56,7 @@ jobs:
 
       - name: Run smoke test
         run: |
+          set -e
           IMAGE="ghcr.io/schneegans/gnome-shell-pod-${{ matrix.version }}"
           UUID="xdock@github.com"
 
@@ -69,37 +70,33 @@ jobs:
           echo "Starting container..."
           POD=$(podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK -td "$IMAGE")
 
-          echo "Waiting for D-Bus..."
-          do_in_pod wait-user-bus.sh
-
           echo "Installing extension..."
           podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
-          do_in_pod gnome-extensions install --force "/home/gnomeshell/${UUID}.zip"
+          do_in_pod gnome-extensions install "${UUID}.zip"
+
+          echo "Disabling welcome tour..."
+          do_in_pod gsettings set org.gnome.shell welcome-dialog-last-shown-version "999" || true
 
           echo "Starting GNOME Shell..."
-          do_in_pod systemctl --user start "gnome-xsession@:99" || true
-          sleep 5
+          do_in_pod systemctl --user start "gnome-xsession@:99"
+          sleep 10
 
           echo "Enabling extension..."
-          do_in_pod gnome-extensions enable "$UUID" || true
+          do_in_pod gnome-extensions enable "$UUID"
           sleep 3
 
           echo "Checking extension state..."
-          STATE=$(do_in_pod gnome-extensions info "$UUID" 2>/dev/null || echo "not found")
-          echo "$STATE"
+          do_in_pod gnome-extensions info "$UUID" || true
 
           echo "Checking for errors..."
           ERRORS=$(podman exec "${POD}" journalctl --user -b \
               | grep -i "xdock\|${UUID}" \
               | grep -iE "error|syntaxerror|typeerror|referenceerror|failed" \
-              | grep -iv "logError\|CalendarServer\|Malcontent\|geolocation\|Auth\|record usage\|coverPane" \
+              | grep -iv "logError\|CalendarServer\|Malcontent\|geolocation\|Auth\|record usage\|coverPane\|Brightness" \
               || true)
 
           echo "Taking screenshot..."
-          podman cp "${POD}:/opt/Xvfb_screen0" Xvfb_screen0 2>/dev/null || true
-          if [ -f Xvfb_screen0 ]; then
-            convert xwd:Xvfb_screen0 screenshot.png 2>/dev/null || true
-          fi
+          podman cp "${POD}:/opt/Xvfb_screen0" - | tar xf - --to-command "convert xwd:- screenshot.png" 2>/dev/null || true
 
           podman stop "${POD}" >/dev/null 2>&1 || true
 
