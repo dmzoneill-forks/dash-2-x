@@ -1379,8 +1379,10 @@ export const DockDash = GObject.registerClass({
             return;
         this._magnificationEnabled = true;
 
-        // Allow the box to overflow when icons are scaled up
+        // Allow overflow when icons are scaled up
         this._box.set_clip_to_allocation(false);
+        this._scrollView.set_clip_to_allocation(false);
+        this._dashContainer.set_clip_to_allocation(false);
 
         this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
             this._scrollView, 'motion-event',
@@ -1449,28 +1451,48 @@ export const DockDash = GObject.registerClass({
             pivotY = 1.0;
         }
 
-        for (const child of children) {
+        // Compute scale for each child based on distance from cursor
+        const iconData = children.map(child => {
             const [childX, childY] = child.get_transformed_position();
             const [childW, childH] = child.get_transformed_size();
-
-            // Center of the icon in stage coordinates
-            const centerX = childX + childW / 2;
-            const centerY = childY + childH / 2;
-
-            // Distance along the dock's major axis
-            const distance = this._isHorizontal
-                ? Math.abs(cursorX - centerX)
-                : Math.abs(cursorY - centerY);
-
-            // Parabolic falloff: scale = 1 + (maxScale - 1) * max(0, 1 - (d/spread)^2)
+            const center = this._isHorizontal
+                ? childX + childW / 2
+                : childY + childH / 2;
+            const size = this._isHorizontal ? childW : childH;
+            const distance = Math.abs((this._isHorizontal ? cursorX : cursorY) - center);
             const normalized = distance / spread;
             const falloff = Math.max(0.0, 1.0 - normalized * normalized);
             const scale = 1.0 + (maxScale - 1.0) * falloff;
+            const extra = size * (scale - 1.0);
+            return {child, scale, extra};
+        });
 
-            child.set_pivot_point(pivotX, pivotY);
-            child.set_easing_duration(80);
-            child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
-            child.set_scale(scale, scale);
+        // Compute total extra space to distribute
+        const totalExtra = iconData.reduce((sum, d) => sum + d.extra, 0);
+
+        // Each icon gets an offset: accumulate extra from the left,
+        // then shift everyone left by half the total so it's centered.
+        let accumulated = 0;
+        for (const data of iconData) {
+            const icon = data.child.child?.icon?._iconBin ??
+                         data.child.child?.icon ?? data.child.child;
+            if (!icon)
+                continue;
+
+            const offset = accumulated - totalExtra / 2 + data.extra / 2;
+            accumulated += data.extra;
+
+            icon.set_pivot_point(pivotX, pivotY);
+            icon.set_easing_duration(100);
+            icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+            icon.set_scale(data.scale, data.scale);
+
+            data.child.set_easing_duration(100);
+            data.child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+            if (this._isHorizontal)
+                data.child.translation_x = offset;
+            else
+                data.child.translation_y = offset;
         }
 
         return Clutter.EVENT_PROPAGATE;
@@ -1491,13 +1513,17 @@ export const DockDash = GObject.registerClass({
             child.child && child.child.icon && !child.animatingOut);
 
         for (const child of children) {
-            if (animate) {
-                child.set_easing_duration(200);
-                child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
-            } else {
-                child.set_easing_duration(0);
-            }
-            child.set_scale(1.0, 1.0);
+            const icon = child.child?.icon?._iconBin ?? child.child?.icon ?? child.child;
+            if (!icon)
+                continue;
+            const dur = animate ? 200 : 0;
+            child.set_easing_duration(dur);
+            child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+            child.translation_x = 0;
+            child.translation_y = 0;
+            icon.set_easing_duration(dur);
+            icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+            icon.set_scale(1.0, 1.0);
         }
     }
 
