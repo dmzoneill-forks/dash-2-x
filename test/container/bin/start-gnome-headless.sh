@@ -4,32 +4,43 @@
 #
 # Usage: start-gnome-headless.sh [WIDTHxHEIGHT]
 
-set -euo pipefail
-
 RESOLUTION="${1:-1920x1080}"
 
-export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-export MUTTER_DEBUG_DUMMY_MODE_SPECS="${RESOLUTION}"
 export LIBGL_ALWAYS_SOFTWARE=1
+export MUTTER_DEBUG_DUMMY_MODE_SPECS="${RESOLUTION}"
 
-# Start gnome-shell headless in background
-gnome-shell --headless --no-x11 --virtual-monitor "${RESOLUTION}" &
-SHELL_PID=$!
+# Launch gnome-shell with its own D-Bus session
+dbus-run-session -- bash -c '
+    echo "HEADLESS_DBUS=${DBUS_SESSION_BUS_ADDRESS}" > /tmp/gnome-headless-env
+    gnome-shell --headless --no-x11 --virtual-monitor "'"${RESOLUTION}"'" &
+    SHELL_PID=$!
+    echo "gnome-shell headless started (PID ${SHELL_PID}, '"${RESOLUTION}"')"
+    echo "${SHELL_PID}" > /tmp/gnome-shell-headless.pid
 
-echo "gnome-shell headless started (PID ${SHELL_PID}, ${RESOLUTION})"
-echo "${SHELL_PID}" > /tmp/gnome-shell-headless.pid
+    # Wait for shell to register on D-Bus
+    for i in $(seq 1 30); do
+        if dbus-send --session --print-reply \
+            --dest=org.gnome.Shell \
+            /org/gnome/Shell \
+            org.freedesktop.DBus.Properties.Get \
+            string:org.gnome.Shell string:ShellVersion 2>/dev/null | grep -q "string"; then
+            echo "gnome-shell ready after ${i}s"
+            break
+        fi
+        sleep 1
+    done
 
-# Wait for shell to be ready
-for i in $(seq 1 30); do
-    if dbus-send --session --print-reply \
-        --dest=org.gnome.Shell \
-        /org/gnome/Shell \
-        org.freedesktop.DBus.Properties.Get \
-        string:org.gnome.Shell string:ShellVersion 2>/dev/null | grep -q 'string'; then
-        echo "gnome-shell ready after ${i}s"
+    # Keep the session alive
+    wait $SHELL_PID
+' &
+
+# Wait for the env file to appear
+for i in $(seq 1 15); do
+    if [ -f /tmp/gnome-headless-env ]; then
+        cat /tmp/gnome-headless-env
         exit 0
     fi
     sleep 1
 done
 
-echo "Warning: gnome-shell may not be fully ready"
+echo "Warning: gnome-shell headless may not have started"

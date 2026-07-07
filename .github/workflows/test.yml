@@ -115,12 +115,24 @@ jobs:
           # Try X11 session first (Fedora 41), then headless Wayland (42+)
           if do_in_pod systemctl --user start "gnome-xsession@:99" 2>/dev/null; then
             echo "  X11 session started"
-          elif do_in_pod start-gnome-headless.sh 1920x1080 2>/dev/null; then
-            echo "  Headless Wayland session started"
+            sleep 10
           else
-            echo "  Warning: could not start GNOME session"
+            echo "  X11 unavailable, trying headless Wayland..."
+            do_in_pod start-gnome-headless.sh 1920x1080 || true
+            sleep 15
+            # Source the headless D-Bus address for subsequent commands
+            HEADLESS_ENV=$(podman exec "${POD}" cat /tmp/gnome-headless-env 2>/dev/null || true)
+            if [ -n "$HEADLESS_ENV" ]; then
+              HEADLESS_DBUS=$(echo "$HEADLESS_ENV" | grep HEADLESS_DBUS | cut -d= -f2-)
+              echo "  Headless D-Bus: $HEADLESS_DBUS"
+              # Override do_in_pod to use the headless D-Bus
+              do_in_pod() {
+                podman exec --user gnomeshell --workdir /home/gnomeshell \
+                  -e "DBUS_SESSION_BUS_ADDRESS=${HEADLESS_DBUS}" \
+                  "${POD}" "$@"
+              }
+            fi
           fi
-          sleep 10
 
           echo "Enabling extension..."
           do_in_pod gnome-extensions enable "$UUID" || true
