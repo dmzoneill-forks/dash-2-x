@@ -24,7 +24,9 @@ function _ensureWallpaperModule() {
     if (WallpaperColorExtractor || _wallpaperModuleLoading)
         return;
     _wallpaperModuleLoading = true;
-    import('./wallpaperColorExtractor.js').then(m => { WallpaperColorExtractor = m; })
+    import('./wallpaperColorExtractor.js').then(m => {
+        WallpaperColorExtractor = m;
+    })
         .catch(e => logError(e, 'XDock: Failed to load WallpaperColorExtractor'));
 }
 

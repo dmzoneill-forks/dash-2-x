@@ -818,7 +818,6 @@ class WindowPreviewMenuItem extends PopupMenu.PopupBaseMenuItem {
         this._clone = clone;
         this._mutterWindow = mutterWindow;
         this._cloneBin.set_child(this._clone);
-
     }
 
     _windowCanClose() {

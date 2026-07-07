@@ -8,7 +8,6 @@ import {
 } from './dependencies/gi.js';
 
 import {
-    Docking,
     Utils,
 } from './imports.js';
 
@@ -114,9 +113,11 @@ class WorkspaceMinimap extends St.BoxLayout {
 
         if (direction === Clutter.ScrollDirection.SMOOTH) {
             const [dx, dy] = event.get_scroll_delta();
-            const delta = this._isHorizontal
-                ? (Math.abs(dx) > Math.abs(dy) ? dx : dy)
-                : dy;
+            let delta;
+            if (this._isHorizontal)
+                delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+            else
+                delta = dy;
             if (Math.abs(delta) < 0.5)
                 return Clutter.EVENT_STOP;
             direction = delta > 0

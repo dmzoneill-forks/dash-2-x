@@ -278,7 +278,7 @@ const projectRules = {
 export default [
     // Global ignores (replaces .eslintignore)
     {
-        ignores: ['_build/**'],
+        ignores: ['_build/**', 'test/**', 'node_modules/**', 'coverage/**'],
     },
 
     // Main config for all JS files
