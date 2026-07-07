@@ -1,0 +1,47 @@
+---
+name: Container Scan
+'on':
+  push:
+    branches: [master]
+    paths:
+      - 'test/container/**'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'test/container/**'
+  schedule:
+    - cron: '0 8 * * 1'
+
+jobs:
+  trivy:
+    name: Trivy (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - fedora: '41'
+            name: 'Fedora 41'
+          - fedora: '44'
+            name: 'Fedora 44'
+    steps:
+      - name: Check out the codebase
+        uses: actions/checkout@v4
+
+      - name: Build test container
+        run: |
+          podman build \
+            --build-arg=fedora_version=${{ matrix.fedora }} \
+            -t xdock-test:f${{ matrix.fedora }} \
+            test/container/
+
+      - name: Save container image
+        run: podman save xdock-test:f${{ matrix.fedora }} -o image.tar
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          input: image.tar
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 0

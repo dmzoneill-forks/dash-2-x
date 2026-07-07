@@ -1,0 +1,44 @@
+---
+name: License Audit
+'on':
+  push:
+    branches: [master]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: |
+          npx license-checker --production --failOn \
+            'AGPL-1.0;AGPL-3.0;SSPL-1.0;BSL-1.1;EUPL-1.1;EUPL-1.2' \
+            --summary
+
+      - name: Generate SBOM
+        run: npm sbom --sbom-format cyclonedx > sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
