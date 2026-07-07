@@ -2238,9 +2238,9 @@ export class DockManager {
         this._deferredModulesLoaded.then(() => {
             if (ScreencastMonitor)
                 this._screencastMonitor = new ScreencastMonitor.ScreencastMonitor();
-            if (MprisMonitor && this._settings.get_boolean('show-media-controls'))
+            if (MprisMonitor)
                 this._mprisMonitor = new MprisMonitor.MprisMonitor();
-            if (VolumeControl && this._settings.get_boolean('show-volume-control'))
+            if (VolumeControl)
                 this._volumeControl = new VolumeControl.VolumeControl();
             if (DockProfiles)
                 this._dockProfiles = new DockProfiles.DockProfiles(this._settings);
@@ -3075,8 +3075,12 @@ export class DockManager {
         // In devkit/headless sessions, the startup animation may have
         // crashed before monitors were available, leaving the overview
         // stuck open. Complete startup and dismiss the overview.
-        if (Main.layoutManager._startingUp)
-            Main.layoutManager._startupAnimationComplete();
+        if (Main.layoutManager._startingUp) {
+            if (Main.layoutManager._coverPane)
+                Main.layoutManager._startupAnimationComplete();
+            else
+                Main.layoutManager._startingUp = false;
+        }
 
         // Adjust corners if necessary
         this._adjustPanelCorners();
