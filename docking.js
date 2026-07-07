@@ -3072,6 +3072,21 @@ export class DockManager {
         // Make the necessary changes to Main.overview.dash
         this._prepareMainDash();
 
+        // In devkit/headless sessions, the startup animation may have
+        // failed (showAppsButton undefined when monitors weren't ready).
+        // If the shell is still in startup state after dock creation,
+        // complete startup on the next idle to dismiss the overview.
+        if (Main.layoutManager._startingUp) {
+            const startupId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                if (Main.layoutManager._startingUp) {
+                    Main.layoutManager._startingUp = false;
+                    Main.layoutManager.emit('startup-complete');
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+            GLib.Source.set_name_by_id(startupId, '[xdock] deferred startup-complete');
+        }
+
         // Adjust corners if necessary
         this._adjustPanelCorners();
 
