@@ -108,8 +108,9 @@ jobs:
             sleep 2
           done
 
-          echo "Disabling welcome tour..."
+          echo "Configuring GNOME Shell..."
           do_in_pod gsettings set org.gnome.shell welcome-dialog-last-shown-version "999" || true
+          do_in_pod gsettings set org.gnome.shell enabled-extensions "['${UUID}']" || true
 
           echo "Starting GNOME Shell..."
           # Try X11 session first (Fedora 41), then headless Wayland (42+)
