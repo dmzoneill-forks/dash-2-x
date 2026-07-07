@@ -94,11 +94,11 @@ jobs:
           }
 
           echo "Starting container ($IMG)..."
-          POD=$(podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK -td "$IMG")
+          POD=$(podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK --cap-add=SYS_ADMIN -td "$IMG")
 
           echo "Waiting for container boot..."
-          sleep 3
-          do_in_pod wait-user-bus.sh 2>/dev/null || sleep 10
+          sleep 5
+          do_in_pod wait-user-bus.sh 2>/dev/null || sleep 15
 
           echo "Installing extension..."
           podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
@@ -130,6 +130,16 @@ jobs:
           echo "Opening preferences..."
           do_in_pod gnome-extensions prefs "$UUID" &
           sleep 5
+
+          echo "Verifying GNOME Shell is running..."
+          for i in $(seq 1 10); do
+            if do_in_pod pgrep -x gnome-shell >/dev/null 2>&1; then
+              echo "  gnome-shell running (PID $(do_in_pod pgrep -x gnome-shell))"
+              break
+            fi
+            echo "  waiting for gnome-shell... ($i)"
+            sleep 2
+          done
 
           echo "GNOME Shell version:"
           do_in_pod gnome-shell --version || true

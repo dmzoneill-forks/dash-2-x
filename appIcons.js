@@ -2351,18 +2351,24 @@ export const DockShowAppsIcon = GObject.registerClass({
     }
 
     vfunc_leave_event(...args) {
-        return AppDisplay.AppIcon.prototype.vfunc_leave_event.call(
-            this.toggleButton, ...args);
+        if (AppDisplay.AppIcon.prototype.vfunc_leave_event)
+            return AppDisplay.AppIcon.prototype.vfunc_leave_event.call(
+                this.toggleButton, ...args);
+        return Clutter.EVENT_PROPAGATE;
     }
 
     vfunc_button_press_event(...args) {
-        return AppDisplay.AppIcon.prototype.vfunc_button_press_event.call(
-            this.toggleButton, ...args);
+        if (AppDisplay.AppIcon.prototype.vfunc_button_press_event)
+            return AppDisplay.AppIcon.prototype.vfunc_button_press_event.call(
+                this.toggleButton, ...args);
+        return Clutter.EVENT_PROPAGATE;
     }
 
     vfunc_touch_event(...args) {
-        return AppDisplay.AppIcon.prototype.vfunc_touch_event.call(
-            this.toggleButton, ...args);
+        if (AppDisplay.AppIcon.prototype.vfunc_touch_event)
+            return AppDisplay.AppIcon.prototype.vfunc_touch_event.call(
+                this.toggleButton, ...args);
+        return Clutter.EVENT_PROPAGATE;
     }
 
     showLabel(...args) {

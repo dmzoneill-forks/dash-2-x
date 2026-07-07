@@ -135,18 +135,30 @@ export class LiveThumbnailManager {
         if (!windowActor)
             return;
 
-        const texture = windowActor.get_texture?.() ?? windowActor;
+        // In GNOME 50+, Meta.ShapedTexture is no longer a ClutterActor,
+        // so we must use the window actor itself as the clone source.
+        let source = windowActor;
+        if (typeof windowActor.get_texture === 'function') {
+            const texture = windowActor.get_texture();
+            if (texture instanceof Clutter.Actor)
+                source = texture;
+        }
 
-        this._clone = new Clutter.Clone({
-            source: texture,
-            reactive: false,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-            y_expand: true,
-            minification_filter: Clutter.ScalingFilter.TRILINEAR,
-            magnification_filter: Clutter.ScalingFilter.TRILINEAR,
-        });
+        try {
+            this._clone = new Clutter.Clone({
+                source,
+                reactive: false,
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+                x_expand: true,
+                y_expand: true,
+                minification_filter: Clutter.ScalingFilter.TRILINEAR,
+                magnification_filter: Clutter.ScalingFilter.TRILINEAR,
+            });
+        } catch (e) {
+            logError(e, 'XDock: Failed to create live thumbnail clone');
+            return;
+        }
 
         // Wrap in a rounded-corner bin so it looks polished in the dock.
         this._cloneBin = new St.Bin({
