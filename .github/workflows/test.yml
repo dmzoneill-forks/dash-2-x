@@ -32,10 +32,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - version: '41'
+          - fedora: '41'
             name: 'Fedora 41 / GNOME 47'
-          - version: 'rawhide'
-            name: 'Fedora Rawhide / Latest GNOME'
+          - fedora: '42'
+            name: 'Fedora 42 / GNOME 48'
+          - fedora: '43'
+            name: 'Fedora 43 / GNOME 49'
+          - fedora: '44'
+            name: 'Fedora 44 / GNOME 50'
     steps:
       - name: Check out the codebase
         uses: actions/checkout@v4
@@ -44,6 +48,13 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq gettext imagemagick
+
+      - name: Build test container
+        run: |
+          podman build \
+            --build-arg=fedora_version=${{ matrix.fedora }} \
+            -t xdock-test:f${{ matrix.fedora }} \
+            test/container/
 
       - name: Build extension zip
         run: |
@@ -58,26 +69,23 @@ jobs:
 
       - name: Run smoke test
         run: |
-          IMAGE="ghcr.io/schneegans/gnome-shell-pod-${{ matrix.version }}"
           UUID="xdock@github.com"
 
           do_in_pod() {
             podman exec --user gnomeshell --workdir /home/gnomeshell "${POD}" set-env.sh "$@"
           }
 
-          echo "Pulling $IMAGE..."
-          podman pull "$IMAGE"
-
           echo "Starting container..."
-          POD=$(podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK -td "$IMAGE")
+          POD=$(podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK \
+                            -td xdock-test:f${{ matrix.fedora }})
 
           echo "Installing extension (file copy)..."
           podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
 
           echo "Waiting for user bus..."
-          for i in $(seq 1 15); do
+          for i in $(seq 1 30); do
             if do_in_pod gnome-extensions install "${UUID}.zip" 2>/dev/null; then
-              echo "  bus ready after ${i}s"
+              echo "  bus ready after $((i * 2))s"
               break
             fi
             sleep 2
@@ -100,6 +108,9 @@ jobs:
 
           echo "Checking extension state..."
           do_in_pod gnome-extensions info "$UUID" || true
+
+          echo "GNOME Shell version:"
+          do_in_pod gnome-shell --version || true
 
           echo "Checking for errors..."
           ERRORS=$(podman exec "${POD}" journalctl --user -b \
@@ -126,6 +137,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshot-${{ matrix.version }}
+          name: screenshot-fedora-${{ matrix.fedora }}
           path: screenshot.png
           if-no-files-found: ignore

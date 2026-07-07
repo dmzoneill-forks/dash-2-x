@@ -1,0 +1,27 @@
+# XDock test container — runs GNOME Shell in xvfb for CI smoke testing.
+# Based on Schneegans/gnome-shell-pod pattern.
+#
+# Build: podman build --build-arg=fedora_version=44 -t xdock-test:f44 test/container/
+# Run:   podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK -td xdock-test:f44
+
+ARG fedora_version=44
+FROM registry.fedoraproject.org/fedora:${fedora_version}
+
+RUN dnf update -y && \
+    dnf --nodocs install -y \
+        gnome-session-xsession gnome-extensions-app xorg-x11-xinit \
+        xorg-x11-server-Xvfb gnome-terminal xdotool xautomation sudo && \
+    dnf clean all -y && \
+    rm -rf /var/cache/dnf
+
+COPY etc /etc
+
+RUN systemctl unmask systemd-logind.service console-getty.service getty.target && \
+    systemctl enable xvfb@:99.service && \
+    systemctl set-default multi-user.target && \
+    adduser -m -U -G users,adm gnomeshell && \
+    echo "gnomeshell     ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+COPY bin /usr/local/bin
+
+CMD [ "/usr/sbin/init", "systemd.unified_cgroup_hierarchy=0" ]
