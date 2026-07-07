@@ -96,12 +96,13 @@ jobs:
           echo "Starting container ($IMG)..."
           POD=$(podman run --rm --cap-add=SYS_NICE --cap-add=IPC_LOCK -td "$IMG")
 
-          echo "Waiting for user bus..."
-          do_in_pod wait-user-bus.sh 2>/dev/null || true
+          echo "Waiting for container boot..."
+          sleep 3
+          do_in_pod wait-user-bus.sh 2>/dev/null || sleep 10
 
           echo "Installing extension..."
           podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
-          for i in $(seq 1 15); do
+          for i in $(seq 1 20); do
             if do_in_pod gnome-extensions install "${UUID}.zip" 2>/dev/null; then
               echo "  installed after $((i * 2))s"
               break
@@ -111,7 +112,7 @@ jobs:
 
           echo "Configuring GNOME Shell..."
           do_in_pod gsettings set org.gnome.shell welcome-dialog-last-shown-version "999" || true
-          do_in_pod gsettings set org.gnome.shell enabled-extensions "['${UUID}']" || true
+          do_in_pod bash -c "gsettings set org.gnome.shell enabled-extensions \"['${UUID}']\"" || true
 
           echo "Starting GNOME Shell..."
           if do_in_pod systemctl --user start "gnome-xsession@:99" 2>/dev/null; then
