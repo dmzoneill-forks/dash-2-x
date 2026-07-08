@@ -8,7 +8,7 @@ import {DBusMenuUtils} from './imports.js';
 let DBusMenu = null;
 DBusMenuUtils.haveDBusMenu().then(m => {
     DBusMenu = m;
-});
+}).catch(e => logError(e, 'XDock: Failed to load DBusMenu'));
 
 export class LauncherEntryRemoteModel {
     constructor() {

@@ -53,7 +53,7 @@ export async function haveDBusMenu() {
 let DBusMenu = null;
 haveDBusMenu().then(m => {
     DBusMenu = m;
-});
+}).catch(e => logError(e, 'XDock: Failed to load DBusMenu'));
 
 /**
  * @param dbusmenuItem

@@ -799,14 +799,28 @@ class WindowPreviewMenuItem extends PopupMenu.PopupBaseMenuItem {
         }
 
         const mutterWindow = metaWin.get_compositor_private();
-        const clone = new Clutter.Clone({
-            source: mutterWindow,
-            reactive: true,
-            width: this._width * this._scale,
-            height: this._height * this._scale,
-            minification_filter: Clutter.ScalingFilter.TRILINEAR,
-            magnification_filter: Clutter.ScalingFilter.TRILINEAR,
-        });
+        // In GNOME 50+, Meta.ShapedTexture is no longer a ClutterActor.
+        // Use the window actor directly as the clone source.
+        let source = mutterWindow;
+        if (typeof mutterWindow.get_texture === 'function') {
+            const texture = mutterWindow.get_texture();
+            if (texture instanceof Clutter.Actor)
+                source = texture;
+        }
+        let clone;
+        try {
+            clone = new Clutter.Clone({
+                source,
+                reactive: true,
+                width: this._width * this._scale,
+                height: this._height * this._scale,
+                minification_filter: Clutter.ScalingFilter.TRILINEAR,
+                magnification_filter: Clutter.ScalingFilter.TRILINEAR,
+            });
+        } catch (e) {
+            logError(e, 'XDock: Failed to create window preview clone');
+            return;
+        }
 
         // when the source actor is destroyed, i.e. the window closed, first destroy the clone
         // and then destroy the menu item (do this animating out)

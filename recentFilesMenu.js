@@ -28,6 +28,8 @@ const XBEL_PATH = GLib.build_filenamev([
     GLib.get_home_dir(), '.local', 'share', 'recently-used.xbel',
 ]);
 
+Gio._promisify(Gio.File.prototype, 'load_contents_async');
+
 const HOVER_ENTER_TIMEOUT = 400;
 const HOVER_LEAVE_TIMEOUT = 300;
 
@@ -35,16 +37,14 @@ const HOVER_LEAVE_TIMEOUT = 300;
  * Parse the recently-used.xbel file and return bookmark entries.
  * Each entry has: { href, name, mimeType, appExecs, modified }
  */
-function _parseRecentlyUsed() {
+async function _parseRecentlyUsed() {
     const file = Gio.File.new_for_path(XBEL_PATH);
     if (!file.query_exists(null))
         return [];
 
     let contents;
     try {
-        const [ok, data] = file.load_contents(null);
-        if (!ok)
-            return [];
+        const [data] = await file.load_contents_async(null);
         contents = new TextDecoder().decode(data);
     } catch (e) {
         logError(e, 'Failed to read recently-used.xbel');
@@ -181,8 +181,8 @@ function _entryMatchesApp(entry, app) {
 /**
  * Get recent files for a specific app, limited to MAX_RECENT_FILES.
  */
-export function getRecentFilesForApp(app) {
-    const allEntries = _parseRecentlyUsed();
+export async function getRecentFilesForApp(app) {
+    const allEntries = await _parseRecentlyUsed();
     const matched = [];
 
     for (const entry of allEntries) {
@@ -314,10 +314,10 @@ export class RecentFilesMenu extends PopupMenu.PopupMenu {
         this.connect('destroy', this._onDestroy.bind(this));
     }
 
-    _redisplay() {
+    async _redisplay() {
         this.removeAll();
 
-        const recentFiles = getRecentFilesForApp(this._app);
+        const recentFiles = await getRecentFilesForApp(this._app);
 
         if (recentFiles.length === 0)
             return false;

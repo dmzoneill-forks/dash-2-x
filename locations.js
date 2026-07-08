@@ -1702,7 +1702,8 @@ class CategoryPanel {
         // Close panel when dock hides — connect with delay
         const {mainDock} = Docking.DockManager.getDefault() ?? {};
         if (mainDock) {
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+            this._dockHidingTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+                this._dockHidingTimeoutId = 0;
                 if (!this.isOpen)
                     return GLib.SOURCE_REMOVE;
                 this._dockHidingId = mainDock.connect('hiding', () => this.close());
@@ -1710,9 +1711,8 @@ class CategoryPanel {
             });
         }
 
-        // Transparent overlay over the entire screen — catches all clicks
-        // outside the panel (same technique as PopupMenuManager)
-        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+        this._overlayIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._overlayIdleId = 0;
             if (!this.isOpen)
                 return GLib.SOURCE_REMOVE;
 
@@ -1820,6 +1820,14 @@ class CategoryPanel {
     }
 
     destroy() {
+        if (this._dockHidingTimeoutId) {
+            GLib.source_remove(this._dockHidingTimeoutId);
+            this._dockHidingTimeoutId = 0;
+        }
+        if (this._overlayIdleId) {
+            GLib.source_remove(this._overlayIdleId);
+            this._overlayIdleId = 0;
+        }
         if (this._dockHidingId) {
             Docking.DockManager.getDefault()?.mainDock?.disconnect(this._dockHidingId);
             this._dockHidingId = null;

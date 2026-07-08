@@ -68,7 +68,7 @@ const MAX_TOOLTIP_LABEL_WIDTH_PX = 700;
 let DBusMenu = null;
 DBusMenuUtils.haveDBusMenu().then(m => {
     DBusMenu = m;
-});
+}).catch(e => logError(e, 'XDock: Failed to load DBusMenu'));
 
 const tracker = Shell.WindowTracker.get_default();
 
@@ -995,7 +995,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
                         // minimize all windows on double click and always in
                         // the case of primary click without additional modifiers
                         let clickCount = 0;
-                        if (Clutter.EventType.CLUTTER_BUTTON_PRESS)
+                        if (event.type() === Clutter.EventType.BUTTON_PRESS)
                             clickCount = event.get_click_count();
                         const allWindows = (button === 1 && !modifiers) || clickCount > 1;
                         this._minimizeWindow(allWindows);
@@ -1843,7 +1843,7 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
         delete this._volumeMenuItem;
     }
 
-    _rebuildMenu() {
+    async _rebuildMenu() {
         this.removeAll();
 
         const appItemLabel = this.sourceActor.updating
@@ -1884,7 +1884,7 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
 
         // Recent Files submenu
         if (RecentFilesMenu && Docking.DockManager.settings.showRecentFiles && !app.is_window_backed()) {
-            const recentFiles = RecentFilesMenu.getRecentFilesForApp(app);
+            const recentFiles = await RecentFilesMenu.getRecentFilesForApp(app);
             if (recentFiles.length > 0) {
                 this._recentFilesMenuItem = new PopupMenu.PopupSubMenuMenuItem(
                     __('Recent Files'), false);
