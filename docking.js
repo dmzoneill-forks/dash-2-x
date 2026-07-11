@@ -127,6 +127,10 @@ const DashSlideContainer = GObject.registerClass({
             'slide-x', 'slide-x', 'slide-x',
             GObject.ParamFlags.READWRITE | GObject.ParamFlags.CONSTRUCT,
             0, 1, 1),
+        'magnification-overflow': GObject.ParamSpec.double(
+            'magnification-overflow', 'magnification-overflow', 'magnification-overflow',
+            GObject.ParamFlags.READWRITE,
+            0, 1000, 0),
     },
 }, class DashSlideContainer extends St.Bin {
     _init(params = {}) {
@@ -134,12 +138,19 @@ const DashSlideContainer = GObject.registerClass({
 
         this._slideoutSize = 0; // minimum size when slided out
         this.connect('notify::slide-x', () => this.queue_relayout());
+        this.connect('notify::magnification-overflow', () => this.queue_relayout());
 
         if (this.side === St.Side.TOP && DockManager.settings.dockFixed) {
             this._signalsHandler = new Utils.GlobalSignalsHandler(this);
             this._signalsHandler.add(Main.panel, 'notify::height',
                 () => this.queue_relayout());
         }
+    }
+
+    vfunc_get_paint_volume(volume) {
+        if (this.magnificationOverflow > 0)
+            return false;
+        return super.vfunc_get_paint_volume(volume);
     }
 
     vfunc_allocate(box) {
@@ -187,8 +198,13 @@ const DashSlideContainer = GObject.registerClass({
 
         this.child.allocate(childBox);
 
-        this.child.set_clip(-childBox.x1, -childBox.y1,
-            -childBox.x1 + availWidth, -childBox.y1 + availHeight);
+        const overflow = this.magnificationOverflow;
+        if (overflow > 0) {
+            this.child.remove_clip();
+        } else {
+            this.child.set_clip(-childBox.x1, -childBox.y1,
+                -childBox.x1 + availWidth, -childBox.y1 + availHeight);
+        }
     }
 
     /**
@@ -248,6 +264,12 @@ const DockedDash = GObject.registerClass({
         'hiding': {},
     },
 }, class DashToDock extends St.Bin {
+    vfunc_get_paint_volume(volume) {
+        if (this._slider?.magnificationOverflow > 0)
+            return false;
+        return super.vfunc_get_paint_volume(volume);
+    }
+
     _init(params) {
         // Determine position before super._init since we need it for style_class.
         // Secondary docks use their own position setting.
@@ -377,7 +399,16 @@ const DockedDash = GObject.registerClass({
             this.dash,
             'notify::requires-visibility',
             () => this._updateDashVisibility(),
+        ], [
+            this.dash,
+            'magnification-changed',
+            this._onMagnificationChanged.bind(this),
         ]);
+
+        // The signal fires during DockDash init before this handler is
+        // connected. Replay it if magnification is already active.
+        if (this.dash._magnificationEnabled)
+            this._onMagnificationChanged(this.dash, true);
 
         if (!Main.overview.isDummy) {
             this._signalsHandler.add([
@@ -1040,6 +1071,37 @@ const DockedDash = GObject.registerClass({
         this._updateDashVisibility();
     }
 
+    _onMagnificationChanged(_dash, enabled) {
+        if (enabled) {
+            const {settings} = DockManager;
+            const maxScale = Math.max(1.0, Math.min(3.0,
+                settings.iconMagnificationFactor));
+            const overflow = this.dash.iconSize * maxScale;
+            this._box.set_clip_to_allocation(false);
+            this._slider.set_clip_to_allocation(false);
+            this.set_clip_to_allocation(false);
+            this._box.remove_clip();
+            this._slider.remove_clip();
+            this.remove_clip();
+            this._box.clip_to_view = false;
+            this._magClipViewId = this._box.connect('notify::allocation', () => {
+                if (this._box.clip_to_view)
+                    this._box.clip_to_view = false;
+            });
+            this._slider.magnificationOverflow = overflow;
+        } else {
+            this._box.set_clip_to_allocation(true);
+            this._slider.set_clip_to_allocation(true);
+            this.set_clip_to_allocation(true);
+            if (this._magClipViewId) {
+                this._box.disconnect(this._magClipViewId);
+                this._magClipViewId = 0;
+            }
+            this._box.clip_to_view = true;
+            this._slider.magnificationOverflow = 0;
+        }
+    }
+
     _hoverChanged() {
         // Check if any preview menus are open
         let hasOpenPreviewMenu = false;
@@ -1158,6 +1220,7 @@ const DockedDash = GObject.registerClass({
                 mass: 1,
                 target: 1.0,
                 initial: this._slider.slideX,
+                actor: this._slider,
                 onUpdate: value => {
                     this._slider.slideX = Math.max(0, Math.min(value, 1.15));
                 },
@@ -1207,6 +1270,7 @@ const DockedDash = GObject.registerClass({
                 mass: 1,
                 target: 0.0,
                 initial: this._slider.slideX,
+                actor: this._slider,
                 onUpdate: value => {
                     this._slider.slideX = Math.max(0, Math.min(value, 1.15));
                 },

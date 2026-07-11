@@ -42,6 +42,11 @@ const TransparencyMode = {
     DYNAMIC:  3,
 };
 
+const DockStyle = {
+    FLAT:  0,
+    SHELF: 1,
+};
+
 const Labels = Object.freeze({
     TRANSPARENCY: Symbol('transparency'),
     THEME_CHANGED: Symbol('theme-changed'),
@@ -85,12 +90,20 @@ export class ThemeManager {
             St.ThemeContext.get_for_stage(global.stage), 'changed',
             () => this._queueUpdateCustomTheme());
 
+        // Start blocked so the first unblock on mapped=true is balanced.
+        this._themeChangedBlocked = true;
+        this._signalsHandler.blockWithLabel(Labels.THEME_CHANGED);
+
         const maybeUpdateCustomTheme = () => {
             if (this._actor.mapped) {
-                this._signalsHandler.unblockWithLabel(Labels.THEME_CHANGED);
+                if (this._themeChangedBlocked) {
+                    this._signalsHandler.unblockWithLabel(Labels.THEME_CHANGED);
+                    this._themeChangedBlocked = false;
+                }
                 this.updateCustomTheme();
-            } else {
+            } else if (!this._themeChangedBlocked) {
                 this._signalsHandler.blockWithLabel(Labels.THEME_CHANGED);
+                this._themeChangedBlocked = true;
             }
         };
 
@@ -286,6 +299,16 @@ export class ThemeManager {
         } else {
             this._actor.remove_style_class_name('straight-corner');
         }
+
+        if (settings.iconMagnification && !settings.magnificationHoverHighlight)
+            this._actor.add_style_class_name('no-hover-highlight');
+        else
+            this._actor.remove_style_class_name('no-hover-highlight');
+
+        if (settings.dockStyle === DockStyle.SHELF)
+            this._actor.add_style_class_name('shelf');
+        else
+            this._actor.remove_style_class_name('shelf');
     }
 
     updateCustomTheme() {
@@ -298,6 +321,25 @@ export class ThemeManager {
         this.emit('updated');
     }
 
+    _buildShelfStyle(position) {
+        const {settings} = Docking.DockManager;
+        if (settings.dockStyle !== DockStyle.SHELF)
+            return '';
+
+        const topOp = settings.shelfGradientTopOpacity;
+        const botOp = settings.shelfGradientBottomOpacity;
+        const brOp = settings.shelfBorderOpacity;
+
+        const isHorizontal = position === St.Side.TOP || position === St.Side.BOTTOM;
+        const gradientDir = isHorizontal ? 'vertical' : 'horizontal';
+        const borderSide = isHorizontal ? 'border-top' : 'border-left';
+
+        return `background-gradient-direction: ${gradientDir}; ` +
+            `background-gradient-start: rgba(255,255,255,${topOp}); ` +
+            `background-gradient-end: rgba(0,0,0,${botOp}); ` +
+            `${borderSide}: 1px solid rgba(255,255,255,${brOp}); `;
+    }
+
     /**
      * Reimported back and adapted from atomdock
      */
@@ -308,7 +350,8 @@ export class ThemeManager {
 
         // If built-in theme is enabled, just clear any leftover inline style
         if (settings.applyCustomTheme) {
-            this._dash._background.set_style(null);
+            const shelfStyle = this._buildShelfStyle(Utils.getPosition(settings));
+            this._dash._background.set_style(shelfStyle || null);
             return;
         }
 
@@ -345,6 +388,9 @@ export class ThemeManager {
         if (customBorderRadius >= 0)
             newStyle = `${newStyle}border-radius: ${customBorderRadius}px; `;
 
+        // Append shelf gradient overlay if active
+        newStyle += this._buildShelfStyle(position);
+
         // Customize background
         const fixedTransparency = settings.transparencyMode === TransparencyMode.FIXED;
         const defaultTransparency = settings.transparencyMode === TransparencyMode.DEFAULT;
@@ -378,12 +424,29 @@ export class ThemeManager {
             'extend-height',
             'force-straight-corner',
             'custom-border-radius',
-            'wallpaper-adaptive-intensity'];
+            'wallpaper-adaptive-intensity',
+            'icon-magnification',
+            'magnification-hover-highlight',
+            'dock-style',
+            'shelf-reflection'];
 
         this._signalsHandler.addWithLabel(Labels.THEME_CHANGED, ...keys.map(key => [
             Docking.DockManager.settings,
             `changed::${key}`,
             () => this.updateCustomTheme(),
+        ]));
+
+        const styleOnlyKeys = [
+            'shelf-gradient-top-opacity',
+            'shelf-gradient-bottom-opacity',
+            'shelf-highlight-opacity',
+            'shelf-border-opacity',
+            'shelf-reflection-opacity'];
+
+        this._signalsHandler.addWithLabel(Labels.THEME_CHANGED, ...styleOnlyKeys.map(key => [
+            Docking.DockManager.settings,
+            `changed::${key}`,
+            () => this._adjustTheme(),
         ]));
 
         // Toggling wallpaper-adaptive-color needs to create/destroy the extractor

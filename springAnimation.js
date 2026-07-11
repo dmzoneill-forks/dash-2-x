@@ -25,6 +25,7 @@ export class SpringAnimation {
      * @param {number} [params.mass=1] - Mass of the simulated object
      * @param {number} [params.target=0] - Target (rest) value
      * @param {number} [params.initial=0] - Initial value
+     * @param {Clutter.Actor} [params.actor] - Actor for the timeline's frame clock
      * @param {Function} [params.onUpdate] - Called each frame with the current value
      * @param {Function} [params.onComplete] - Called when the spring settles
      */
@@ -34,6 +35,7 @@ export class SpringAnimation {
         mass = 1,
         target = 0,
         initial = 0,
+        actor,
         onUpdate,
         onComplete,
     }) {
@@ -43,6 +45,7 @@ export class SpringAnimation {
         this._target = target;
         this._position = initial;
         this._velocity = 0;
+        this._actor = actor ?? null;
         this._onUpdate = onUpdate;
         this._onComplete = onComplete;
         this._timeline = null;
@@ -61,16 +64,18 @@ export class SpringAnimation {
         if (this._running)
             return;
 
+        if (this._actor && !this._actor.get_stage()) {
+            this._onComplete?.();
+            return;
+        }
+
         this._running = true;
         this._lastFrameTime = -1;
 
-        // Use a long-running timeline; we stop it manually when settled.
-        // Duration is a generous upper bound — the spring will settle
-        // well within this window for any reasonable parameters.
-        this._timeline = new Clutter.Timeline({
-            duration: 5000,
-            repeat_count: 0,
-        });
+        const timelineParams = {duration: 5000, repeat_count: 0};
+        if (this._actor)
+            timelineParams.actor = this._actor;
+        this._timeline = new Clutter.Timeline(timelineParams);
 
         this._newFrameId = this._timeline.connect('new-frame', (_timeline, _elapsed) => {
             this._step();

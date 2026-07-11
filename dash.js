@@ -150,6 +150,7 @@ export const DockDash = GObject.registerClass({
         'menu-opened': {},
         'menu-closed': {},
         'icon-size-changed': {},
+        'magnification-changed': {param_types: [GObject.TYPE_BOOLEAN]},
     },
 }, class DockDash extends St.Widget {
     _init(monitorIndex, isSecondary = false) {
@@ -298,7 +299,28 @@ export const DockDash = GObject.registerClass({
         }));
         this._background.add_child(sizerBox);
 
+        this._reflection = new St.Widget({
+            style_class: 'dash-reflection',
+            y_expand: false,
+            x_expand: false,
+            visible: false,
+        });
+        if (this._isHorizontal) {
+            this._reflection.add_constraint(new Clutter.BindConstraint({
+                source: this._background,
+                coordinate: Clutter.BindCoordinate.WIDTH,
+            }));
+            this._reflection.height = 20;
+        } else {
+            this._reflection.add_constraint(new Clutter.BindConstraint({
+                source: this._background,
+                coordinate: Clutter.BindCoordinate.HEIGHT,
+            }));
+            this._reflection.width = 20;
+        }
+
         this.add_child(this._background);
+        this.add_child(this._reflection);
         this.add_child(this._dashContainer);
 
         this._workId = Main.initializeDeferredWork(this._box, this._redisplay.bind(this));
@@ -370,7 +392,26 @@ export const DockDash = GObject.registerClass({
             Docking.DockManager.settings,
             'changed::icon-magnification-factor',
             this._toggleMagnification.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::icon-magnification-all',
+            () => this._resetMagnification(true),
         ]);
+
+        this._signalsHandler.add([
+            Docking.DockManager.settings,
+            'changed::dock-style',
+            this._updateReflection.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::shelf-reflection',
+            this._updateReflection.bind(this),
+        ], [
+            Docking.DockManager.settings,
+            'changed::shelf-reflection-opacity',
+            this._updateReflection.bind(this),
+        ]);
+        this._updateReflection();
 
         // Initialize magnification if enabled
         this._magnificationEnabled = false;
@@ -425,6 +466,22 @@ export const DockDash = GObject.registerClass({
      * Create, destroy, or reposition the workspace minimap based on
      * the current settings.
      */
+    _updateReflection() {
+        const {settings} = Docking.DockManager;
+        const visible = settings.dockStyle === 1 && settings.shelfReflection;
+        this._reflection.visible = visible;
+        if (visible) {
+            const op = settings.shelfReflectionOpacity;
+            const dir = this._isHorizontal ? 'to bottom' : 'to right';
+            this._reflection.set_style(
+                `background-image: linear-gradient(${dir}, ` +
+                `rgba(255,255,255,${op}) 0%, transparent 100%); ` +
+                'border-radius: 0 0 12px 12px;');
+        } else {
+            this._reflection.set_style(null);
+        }
+    }
+
     _updateWorkspaceMinimap() {
         const {settings} = Docking.DockManager;
         const enabled = settings.showWorkspaceMinimap;
@@ -1368,30 +1425,140 @@ export const DockDash = GObject.registerClass({
     }
 
     _enableMagnification() {
-        if (this._magnificationEnabled)
-            return;
-        this._magnificationEnabled = true;
+        if (!this._magnificationEnabled) {
+            this._magnificationEnabled = true;
+            this._dashContainer.reactive = true;
 
-        // Allow overflow when icons are scaled up
+            this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
+                this._dashContainer, 'motion-event',
+                this._onMagnificationMotion.bind(this));
+            this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
+                this._dashContainer, 'leave-event',
+                this._onMagnificationLeave.bind(this));
+        }
+
         this._box.set_clip_to_allocation(false);
-        this._scrollView.set_clip_to_allocation(false);
         this._dashContainer.set_clip_to_allocation(false);
+        this.set_clip_to_allocation(false);
+        this.offscreen_redirect = 0;
 
+        // St.BoxLayout extends St.Viewport which defaults clip_to_view
+        // to true and re-applies it on every allocation cycle. Use
+        // notify::allocation handlers to keep it disabled persistently.
+        const keepClipToViewOff = actor => {
+            if (actor.clip_to_view)
+                actor.clip_to_view = false;
+        };
+        this._box.clip_to_view = false;
+        this._dashContainer.clip_to_view = false;
         this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
-            this._scrollView, 'motion-event',
-            this._onMagnificationMotion.bind(this));
+            this._box, 'notify::allocation', () => keepClipToViewOff(this._box));
         this._signalsHandler.addWithLabel(Labels.MAGNIFICATION,
-            this._scrollView, 'leave-event',
-            this._onMagnificationLeave.bind(this));
+            this._dashContainer, 'notify::allocation',
+            () => keepClipToViewOff(this._dashContainer));
+
+        // Reparent the icon box from inside the scrollView (which clips
+        // via St.Viewport) to the dashContainer (outside scrollView).
+        // This lets magnified icons paint beyond the dock bounds.
+        if (this._box.get_parent() === this._boxContainer) {
+            this._boxContainer.remove_child(this._box);
+            this._dashContainer.insert_child_below(this._box, this._scrollView);
+            this._scrollView.hide();
+
+            // Align the box to the dock edge so icons scale away from
+            // the edge (upward for bottom dock, etc.).
+            if (this._isHorizontal) {
+                this._box.y_align = this._position === St.Side.BOTTOM
+                    ? Clutter.ActorAlign.END : Clutter.ActorAlign.START;
+            } else {
+                this._box.x_align = this._position === St.Side.RIGHT
+                    ? Clutter.ActorAlign.END : Clutter.ActorAlign.START;
+            }
+        }
+
+        this.emit('magnification-changed', true);
     }
 
     _disableMagnification() {
         if (!this._magnificationEnabled)
             return;
         this._magnificationEnabled = false;
+        this._dashContainer.reactive = false;
 
         this._signalsHandler.removeWithLabel(Labels.MAGNIFICATION);
         this._resetMagnification(false);
+
+        this.set_clip_to_allocation(true);
+        this.offscreen_redirect = Clutter.OffscreenRedirect.ALWAYS;
+        this._box.clip_to_view = true;
+        this._dashContainer.clip_to_view = true;
+
+        // Reparent the icon box back into the scrollView.
+        if (this._box.get_parent() === this._dashContainer) {
+            this._dashContainer.remove_child(this._box);
+            this._boxContainer.add_child(this._box);
+            this._scrollView.show();
+
+            // Restore original alignment.
+            const rtl = Clutter.get_default_text_direction() === Clutter.TextDirection.RTL;
+            this._box.x_align = rtl ? Clutter.ActorAlign.END : Clutter.ActorAlign.START;
+            this._box.y_align = this._isHorizontal
+                ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
+        }
+
+        this.emit('magnification-changed', false);
+    }
+
+    _getMagnificationPivot() {
+        switch (this._position) {
+        case St.Side.BOTTOM:
+            return [0.5, 1.0];
+        case St.Side.TOP:
+            return [0.5, 0.0];
+        case St.Side.LEFT:
+            return [0.0, 0.5];
+        case St.Side.RIGHT:
+            return [1.0, 0.5];
+        default:
+            return [0.5, 1.0];
+        }
+    }
+
+    _getUtilityScalableActor(element) {
+        if (!element)
+            return null;
+        return element.icon?._iconBin ??
+               element.icon ??
+               element.child ?? element;
+    }
+
+    _magnifyUtilityElement(element, cursor, spread, maxScale, pivotX, pivotY) {
+        if (!element?.visible || !element.get_stage())
+            return;
+
+        const [elX, elY] = element.get_transformed_position();
+        const [elW, elH] = element.get_transformed_size();
+        const center = this._isHorizontal ? elX + elW / 2 : elY + elH / 2;
+        const distance = Math.abs(cursor - center);
+        const scale = Utils.magnificationScale(distance, spread, maxScale);
+
+        const icon = this._getUtilityScalableActor(element);
+        if (!icon)
+            return;
+        icon.set_pivot_point(pivotX, pivotY);
+        icon.set_easing_duration(100);
+        icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+        icon.set_scale(scale, scale);
+    }
+
+    _resetUtilityElement(element, animate) {
+        const icon = this._getUtilityScalableActor(element);
+        if (!icon)
+            return;
+        const dur = animate ? 200 : 0;
+        icon.set_easing_duration(dur);
+        icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+        icon.set_scale(1.0, 1.0);
     }
 
     /**
@@ -1407,83 +1574,94 @@ export const DockDash = GObject.registerClass({
             return Clutter.EVENT_PROPAGATE;
 
         const [cursorX, cursorY] = event.get_coords();
+        const cursor = this._isHorizontal ? cursorX : cursorY;
 
-        // Get the icon children (DashItemContainers with icon children)
-        const children = this._box.get_children().filter(child =>
-            child.child && child.child.icon && !child.animatingOut);
-
-        if (children.length === 0)
-            return Clutter.EVENT_PROPAGATE;
-
-        // Spread: number of icon widths affected on each side
         const spreadIcons = 3;
         const spread = this.iconSize * spreadIcons;
+        const [pivotX, pivotY] = this._getMagnificationPivot();
 
-        // Pivot point: scale from the dock edge
-        // BOTTOM/RIGHT: pivot at bottom/right (1.0); TOP/LEFT: pivot at top/left (0.0)
-        let pivotX, pivotY;
-        switch (this._position) {
-        case St.Side.BOTTOM:
-            pivotX = 0.5;
-            pivotY = 1.0;
-            break;
-        case St.Side.TOP:
-            pivotX = 0.5;
-            pivotY = 0.0;
-            break;
-        case St.Side.LEFT:
-            pivotX = 0.0;
-            pivotY = 0.5;
-            break;
-        case St.Side.RIGHT:
-            pivotX = 1.0;
-            pivotY = 0.5;
-            break;
-        default:
-            pivotX = 0.5;
-            pivotY = 1.0;
+        // Process ALL children of _box (icons AND separators) so
+        // separators translate with the icons instead of staying fixed.
+        const allChildren = this._box.get_children().filter(c => !c.animatingOut);
+
+        if (allChildren.length > 0) {
+            const childData = allChildren.map(child => {
+                const isIcon = !!(child.child && child.child.icon);
+                const [childX, childY] = child.get_transformed_position();
+                const [childW, childH] = child.get_transformed_size();
+                const center = this._isHorizontal
+                    ? childX + childW / 2
+                    : childY + childH / 2;
+                const size = this._isHorizontal ? childW : childH;
+                const distance = Math.abs(cursor - center);
+                const scale = isIcon
+                    ? Utils.magnificationScale(distance, spread, maxScale)
+                    : 1.0;
+                const extra = size * (scale - 1.0);
+                return {child, scale, extra, isIcon};
+            });
+
+            const totalExtra = childData.reduce((sum, d) => sum + d.extra, 0);
+            const centerShift = totalExtra / 2;
+
+            // Compute raw offsets
+            let accumulated = 0;
+            const offsets = childData.map(d => {
+                const o = accumulated - centerShift + d.extra / 2;
+                accumulated += d.extra;
+                return o;
+            });
+
+            // Clamp edges: prevent the first child from extending past the
+            // left boundary and the last from extending past the right.
+            const leftOverflow = Math.max(0, childData[0].extra / 2 - offsets[0]);
+            const rightOverflow = Math.max(0,
+                offsets[offsets.length - 1] + childData[childData.length - 1].extra / 2);
+            const clamp = (leftOverflow + rightOverflow) > 0
+                ? leftOverflow  // prioritise left; right extends into zoomable elements
+                : 0;
+            if (clamp !== 0) {
+                for (let i = 0; i < offsets.length; i++)
+                    offsets[i] += clamp;
+            }
+
+            for (let i = 0; i < childData.length; i++) {
+                const data = childData[i];
+                const offset = offsets[i];
+
+                // Scale the icon actor (only for icon children)
+                if (data.isIcon) {
+                    const icon = data.child.child?.icon?._iconBin ??
+                                 data.child.child?.icon ?? data.child.child;
+                    if (icon) {
+                        icon.set_pivot_point(pivotX, pivotY);
+                        icon.set_easing_duration(100);
+                        icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+                        icon.set_scale(data.scale, data.scale);
+                    }
+                }
+
+                // Z-order: zoomed icons paint on top of neighbours
+                data.child.set_z_position(data.scale > 1.0 ? data.scale * 10 : 0);
+
+                // Translate ALL children so separators stay in sync
+                data.child.set_easing_duration(100);
+                data.child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+                if (this._isHorizontal)
+                    data.child.translation_x = offset;
+                else
+                    data.child.translation_y = offset;
+            }
         }
 
-        // Compute scale for each child based on distance from cursor
-        const iconData = children.map(child => {
-            const [childX, childY] = child.get_transformed_position();
-            const [childW, childH] = child.get_transformed_size();
-            const center = this._isHorizontal
-                ? childX + childW / 2
-                : childY + childH / 2;
-            const size = this._isHorizontal ? childW : childH;
-            const distance = Math.abs((this._isHorizontal ? cursorX : cursorY) - center);
-            const scale = Utils.magnificationScale(distance, spread, maxScale);
-            const extra = size * (scale - 1.0);
-            return {child, scale, extra};
-        });
-
-        // Compute total extra space to distribute
-        const totalExtra = iconData.reduce((sum, d) => sum + d.extra, 0);
-
-        // Each icon gets an offset: accumulate extra from the left,
-        // then shift everyone left by half the total so it's centered.
-        let accumulated = 0;
-        for (const data of iconData) {
-            const icon = data.child.child?.icon?._iconBin ??
-                         data.child.child?.icon ?? data.child.child;
-            if (!icon)
-                continue;
-
-            const offset = accumulated - totalExtra / 2 + data.extra / 2;
-            accumulated += data.extra;
-
-            icon.set_pivot_point(pivotX, pivotY);
-            icon.set_easing_duration(100);
-            icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
-            icon.set_scale(data.scale, data.scale);
-
-            data.child.set_easing_duration(100);
-            data.child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
-            if (this._isHorizontal)
-                data.child.translation_x = offset;
-            else
-                data.child.translation_y = offset;
+        // Magnify utility elements (workspace minimap, show-apps, quick settings)
+        if (settings.iconMagnificationAll) {
+            this._magnifyUtilityElement(
+                this._workspaceMinimapContainer, cursor, spread, maxScale, pivotX, pivotY);
+            this._magnifyUtilityElement(
+                this._showAppsIcon, cursor, spread, maxScale, pivotX, pivotY);
+            this._magnifyUtilityElement(
+                this._quickSettingsButton, cursor, spread, maxScale, pivotX, pivotY);
         }
 
         return Clutter.EVENT_PROPAGATE;
@@ -1495,27 +1673,32 @@ export const DockDash = GObject.registerClass({
     }
 
     /**
-     * Reset all icon scales back to 1.0.
+     * Reset all icon scales and translations back to defaults.
      *
      * @param {boolean} animate - whether to animate the transition
      */
     _resetMagnification(animate) {
-        const children = this._box.get_children().filter(child =>
-            child.child && child.child.icon && !child.animatingOut);
+        const dur = animate ? 200 : 0;
 
-        for (const child of children) {
-            const icon = child.child?.icon?._iconBin ?? child.child?.icon ?? child.child;
-            if (!icon)
-                continue;
-            const dur = animate ? 200 : 0;
+        for (const child of this._box.get_children()) {
             child.set_easing_duration(dur);
             child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
             child.translation_x = 0;
             child.translation_y = 0;
-            icon.set_easing_duration(dur);
-            icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
-            icon.set_scale(1.0, 1.0);
+            child.set_z_position(0);
+
+            if (child.child?.icon) {
+                const icon = child.child.icon._iconBin ??
+                             child.child.icon ?? child.child;
+                icon.set_easing_duration(dur);
+                icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
+                icon.set_scale(1.0, 1.0);
+            }
         }
+
+        this._resetUtilityElement(this._workspaceMinimapContainer, animate);
+        this._resetUtilityElement(this._showAppsIcon, animate);
+        this._resetUtilityElement(this._quickSettingsButton, animate);
     }
 
     _itemMenuStateChanged(item, opened) {

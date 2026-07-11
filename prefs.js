@@ -1250,6 +1250,49 @@ const DockSettings = GObject.registerClass({
             this._builder.get_object('custom_border_radius_spinbutton'),
             'value', Gio.SettingsBindFlags.DEFAULT);
 
+        // Dock style combo
+        this._builder.get_object('dock_style_combo').set_active(
+            this._settings.get_enum('dock-style'));
+        this._builder.get_object('dock_style_combo').connect('changed', widget => {
+            this._settings.set_enum('dock-style', widget.get_active());
+        });
+        this._settings.connect('changed::dock-style', () => {
+            this._builder.get_object('dock_style_combo').set_active(
+                this._settings.get_enum('dock-style'));
+        });
+
+        // Shelf sub-controls: sensitive only when dock-style is SHELF (1)
+        const updateShelfSensitivity = () => {
+            const isShelf = this._settings.get_enum('dock-style') === 1;
+            for (const id of ['shelf_gradient_top_row', 'shelf_gradient_bottom_row',
+                'shelf_highlight_row', 'shelf_border_row', 'shelf_reflection_row'])
+                this._builder.get_object(id).set_sensitive(isShelf);
+            this._builder.get_object('shelf_reflection_opacity_row').set_sensitive(
+                isShelf && this._settings.get_boolean('shelf-reflection'));
+        };
+        updateShelfSensitivity();
+        this._settings.connect('changed::dock-style', updateShelfSensitivity);
+        this._settings.connect('changed::shelf-reflection', updateShelfSensitivity);
+
+        this._settings.bind('shelf-gradient-top-opacity',
+            this._builder.get_object('shelf_gradient_top_scale').get_adjustment(),
+            'value', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('shelf-gradient-bottom-opacity',
+            this._builder.get_object('shelf_gradient_bottom_scale').get_adjustment(),
+            'value', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('shelf-highlight-opacity',
+            this._builder.get_object('shelf_highlight_scale').get_adjustment(),
+            'value', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('shelf-border-opacity',
+            this._builder.get_object('shelf_border_scale').get_adjustment(),
+            'value', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('shelf-reflection',
+            this._builder.get_object('shelf_reflection_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('shelf-reflection-opacity',
+            this._builder.get_object('shelf_reflection_opacity_scale').get_adjustment(),
+            'value', Gio.SettingsBindFlags.DEFAULT);
+
         this._settings.bind('disable-overview-on-startup',
             this._builder.get_object('show_overview_on_startup_switch'),
             'active', Gio.SettingsBindFlags.INVERT_BOOLEAN);
@@ -1264,6 +1307,12 @@ const DockSettings = GObject.registerClass({
         this._settings.bind('icon-magnification-factor',
             this._builder.get_object('icon_magnification_factor_scale').get_adjustment(),
             'value', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('magnification-hover-highlight',
+            this._builder.get_object('magnification_hover_highlight_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('icon-magnification',
+            this._builder.get_object('magnification_hover_highlight_row'),
+            'sensitive', Gio.SettingsBindFlags.GET);
         this._settings.bind('spring-animations',
             this._builder.get_object('spring_animations_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);

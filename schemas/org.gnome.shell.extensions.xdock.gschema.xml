@@ -52,6 +52,10 @@
     <value value='9' nick='DOT'/>
     <value value='10' nick='NONE'/>
   </enum>
+  <enum id='org.gnome.shell.extensions.xdock.dock-style'>
+    <value value='0' nick='FLAT'/>
+    <value value='1' nick='SHELF'/>
+  </enum>
   <schema path="/org/gnome/shell/extensions/xdock/" id="org.gnome.shell.extensions.xdock">
     <key name="dock-position" enum="org.gnome.shell.extensions.xdock.position">
       <default>'BOTTOM'</default>
@@ -637,6 +641,41 @@
       <summary>Enable glossy effect</summary>
       <description>Toggle the glossy effect of the unity7 backlit feature.</description>
     </key>
+    <key name="dock-style" enum="org.gnome.shell.extensions.xdock.dock-style">
+      <default>'FLAT'</default>
+      <summary>Dock visual style</summary>
+      <description>Visual style for the dock background. FLAT is the default minimal style. SHELF adds a macOS-like 3D shelf with gradient, edge highlights, and depth.</description>
+    </key>
+    <key name="shelf-gradient-top-opacity" type="d">
+      <default>0.4</default>
+      <summary>Shelf gradient top opacity</summary>
+      <description>Opacity of the top edge gradient in shelf style (0.0 to 1.0).</description>
+    </key>
+    <key name="shelf-gradient-bottom-opacity" type="d">
+      <default>0.15</default>
+      <summary>Shelf gradient bottom opacity</summary>
+      <description>Opacity of the bottom edge gradient in shelf style (0.0 to 1.0).</description>
+    </key>
+    <key name="shelf-highlight-opacity" type="d">
+      <default>0.3</default>
+      <summary>Shelf highlight line opacity</summary>
+      <description>Opacity of the top highlight line in shelf style (0.0 to 1.0).</description>
+    </key>
+    <key name="shelf-border-opacity" type="d">
+      <default>0.5</default>
+      <summary>Shelf border opacity</summary>
+      <description>Opacity of the border edges in shelf style (0.0 to 1.0).</description>
+    </key>
+    <key name="shelf-reflection" type="b">
+      <default>true</default>
+      <summary>Enable shelf reflection</summary>
+      <description>Show a subtle reflection gradient below the dock in shelf style.</description>
+    </key>
+    <key name="shelf-reflection-opacity" type="d">
+      <default>0.15</default>
+      <summary>Shelf reflection opacity</summary>
+      <description>Opacity of the reflection effect below the dock in shelf style (0.0 to 1.0).</description>
+    </key>
     <key name="hide-tooltip" type="b">
       <default>false</default>
       <summary>Hide application tooltip</summary>
@@ -780,6 +819,16 @@
       <default>1.5</default>
       <summary>Maximum magnification factor</summary>
       <description>Maximum scale factor for the icon under the cursor (1.0 to 3.0).</description>
+    </key>
+    <key name="icon-magnification-all" type="b">
+      <default>true</default>
+      <summary>Magnify all dock elements</summary>
+      <description>When enabled, the magnification effect also applies to the workspace minimap, show-apps button, and quick settings icon. When disabled, only app icons are magnified.</description>
+    </key>
+    <key name="magnification-hover-highlight" type="b">
+      <default>true</default>
+      <summary>Show hover highlight during magnification</summary>
+      <description>Show the background highlight on icons when hovered during magnification. Disable to let the zoom effect stand alone without the tinted background.</description>
     </key>
     <key name="show-volume-control" type="b">
       <default>true</default>
