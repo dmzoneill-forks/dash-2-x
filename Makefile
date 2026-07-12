@@ -196,11 +196,18 @@ smoke-test: zip-file-nocheck
 	dbus-run-session -- gnome-shell-test-tool --headless \
 		--extension $(UUID).zip test/smoke/load-extension.js
 
-# Integration tests (local): run full test suite in headless session
+# Integration tests (headless): run full test suite, no hold
 integration-test: zip-file-nocheck
 	@command -v gnome-shell-test-tool >/dev/null 2>&1 || \
 		{ echo "gnome-shell-test-tool not found — install mutter-devkit"; exit 1; }
-	dbus-run-session -- gnome-shell-test-tool --headless \
+	XDOCK_TEST_HOLD=0 dbus-run-session -- gnome-shell-test-tool --headless \
+		--extension $(UUID).zip test/integration/runner.js
+
+# Integration tests (interactive): run in devkit window, hold 30s after tests
+integration-test-interactive: zip-file-nocheck
+	@command -v gnome-shell-test-tool >/dev/null 2>&1 || \
+		{ echo "gnome-shell-test-tool not found — install mutter-devkit"; exit 1; }
+	dbus-run-session -- gnome-shell-test-tool --devkit \
 		--extension $(UUID).zip test/integration/runner.js
 
 # Build zip without running lint (for testing)

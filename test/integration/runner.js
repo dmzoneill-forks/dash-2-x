@@ -67,6 +67,17 @@ function _runTests() {
         return;
     }
 
+    // Make the dock always visible during tests so it's
+    // visible in the devkit window and testable.
+    try {
+        const s = _getXDockSettings();
+        s.set_boolean('dock-fixed', true);
+        s.set_boolean('autohide', false);
+        s.set_boolean('intellihide', false);
+    } catch (_e) {
+        log('Warning: could not set dock-fixed for testing');
+    }
+
     const ext = manager.lookup(UUID);
     if (!ext || ext.state !== 1) {
         log(`FAIL: Extension state=${ext?.state}, expected ENABLED (1)`);
@@ -123,4 +134,17 @@ function _runTests() {
 export function run(_argv) {
     log('Runner starting, waiting for extension...');
     _runTests();
+
+    // Hold the shell open so the devkit window stays visible.
+    // Set XDOCK_TEST_HOLD=0 to skip (e.g., in CI).
+    const holdSecs = parseInt(GLib.getenv('XDOCK_TEST_HOLD') ?? '30', 10);
+    if (holdSecs > 0) {
+        log(`Holding for ${holdSecs}s (set XDOCK_TEST_HOLD=0 to skip)...`);
+        const loop = new GLib.MainLoop(null, false);
+        GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, holdSecs, () => {
+            loop.quit();
+            return GLib.SOURCE_REMOVE;
+        });
+        loop.run();
+    }
 }
