@@ -23,7 +23,28 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: npm test
+        id: jest
+        run: |
+          npx jest --json --outputFile=jest-results.json 2>/dev/null || true
+          npm test 2>&1 | tee jest-output.txt
+          PASSED=$(grep -oP '\d+ passing' jest-output.txt | grep -oP '\d+' || echo "0")
+          FAILED=$(grep -oP '\d+ failing' jest-output.txt | grep -oP '\d+' || echo "0")
+          TOTAL=$((PASSED + FAILED))
+          echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          [ "$FAILED" -eq 0 ] || exit 1
+
+      - name: Update unit test badge
+        if: github.ref == 'refs/heads/master' && always()
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.BADGE_GIST_ID }}
+          filename: xdock-unit-tests.json
+          label: unit tests
+          message: "${{ steps.jest.outputs.passed }}/${{ steps.jest.outputs.total }} passed"
+          color: ${{ steps.jest.outputs.failed == '0' && 'brightgreen' || 'red' }}"
 
   smoke-test:
     name: Smoke Test (${{ matrix.name }})
@@ -178,6 +199,14 @@ jobs:
 
           echo "$RESULT"
 
+          # Parse test counts
+          PASSED=$(echo "$RESULT" | grep -oP '\d+ passed' | grep -oP '\d+' || echo "0")
+          FAILED=$(echo "$RESULT" | grep -oP '\d+ failed' | grep -oP '\d+' || echo "0")
+          TOTAL=$((PASSED + FAILED))
+          echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+
           # Copy screenshots out
           mkdir -p screenshots
           podman cp "${POD}:/tmp/." screenshots/ 2>/dev/null || true
@@ -193,6 +222,18 @@ jobs:
           fi
 
           echo "Integration tests passed"
+        id: integration
+
+      - name: Update integration test badge
+        if: github.ref == 'refs/heads/master' && always()
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.BADGE_GIST_ID }}
+          filename: xdock-integration-tests.json
+          label: integration tests
+          message: "${{ steps.integration.outputs.passed }}/${{ steps.integration.outputs.total }} passed"
+          color: ${{ steps.integration.outputs.failed == '0' && 'brightgreen' || 'red' }}
 
       - name: Visual regression comparison
         if: always()

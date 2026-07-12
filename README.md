@@ -18,6 +18,11 @@
   <a href="https://github.com/dmzoneill-forks/xdock/actions/workflows/security-secrets.yml"><img src="https://github.com/dmzoneill-forks/xdock/actions/workflows/security-secrets.yml/badge.svg" alt="Secrets"></a>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dmzoneill/6b234c35e25d3f586f68db8e79591d65/raw/xdock-unit-tests.json" alt="Unit Tests">
+  <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dmzoneill/6b234c35e25d3f586f68db8e79591d65/raw/xdock-integration-tests.json" alt="Integration Tests">
+</p>
+
 ---
 
 <p align="center">
