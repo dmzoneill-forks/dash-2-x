@@ -3,12 +3,15 @@
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
 
 import {
+    Clutter,
     Cogl,
     GLib,
     GObject,
     Meta,
     St,
 } from './dependencies/gi.js';
+
+const {cairo: Cairo} = imports;
 
 import {Main} from './dependencies/shell/ui.js';
 
@@ -319,6 +322,7 @@ export class ThemeManager {
         this._updateDashOpacity();
         this._updateDashColor();
         this._adjustTheme();
+        this._updateShelfOverlay();
         this.emit('updated');
     }
 
@@ -327,18 +331,104 @@ export class ThemeManager {
         if (settings.dockStyle !== DockStyle.SHELF)
             return '';
 
+        // The shelf uses a Cairo-drawn trapezoid overlay, so hide the
+        // CSS rectangular background and border-radius.
+        return 'background-color: transparent; border-radius: 0; ';
+    }
+
+    _updateShelfOverlay() {
+        const {settings} = Docking.DockManager;
+        const bg = this._dash?._background;
+        if (!bg)
+            return;
+
+        if (settings.dockStyle !== DockStyle.SHELF) {
+            if (this._shelfOverlay) {
+                this._shelfOverlay.destroy();
+                this._shelfOverlay = null;
+            }
+            return;
+        }
+
+        if (!this._shelfOverlay) {
+            this._shelfOverlay = new St.DrawingArea();
+            this._shelfOverlay.add_constraint(new Clutter.BindConstraint({
+                source: bg,
+                coordinate: Clutter.BindCoordinate.SIZE,
+            }));
+            this._shelfOverlay.connect('repaint',
+                area => this._paintShelf(area));
+            bg.add_child(this._shelfOverlay);
+        }
+
+        this._shelfOverlay.queue_repaint();
+    }
+
+    _paintShelf(area) {
+        const {settings} = Docking.DockManager;
+        const cr = area.get_context();
+        const [w, h] = area.get_surface_size();
+
+        if (w < 2 || h < 2)
+            return;
+
         const topOp = settings.shelfGradientTopOpacity;
         const botOp = settings.shelfGradientBottomOpacity;
+        const hlOp = settings.shelfHighlightOpacity;
         const brOp = settings.shelfBorderOpacity;
 
-        const isHorizontal = position === St.Side.TOP || position === St.Side.BOTTOM;
-        const gradientDir = isHorizontal ? 'vertical' : 'horizontal';
-        const borderSide = isHorizontal ? 'border-top' : 'border-left';
+        // Clear
+        cr.save();
+        cr.setOperator(Cairo.Operator.CLEAR);
+        cr.paint();
+        cr.restore();
 
-        return `background-gradient-direction: ${gradientDir}; ` +
-            `background-gradient-start: rgba(255,255,255,${topOp}); ` +
-            `background-gradient-end: rgba(0,0,0,${botOp}); ` +
-            `${borderSide}: 1px solid rgba(255,255,255,${brOp}); `;
+        // The shelf occupies the bottom half — icons stand on top of it.
+        const shelfTop = Math.round(h * 0.45);
+        const shelfH = h - shelfTop;
+        const inset = Math.round(shelfH * 0.2);
+        const r = 10;
+
+        cr.save();
+        cr.translate(0, shelfTop);
+
+        // Trapezoid path: top narrower, bottom wider
+        cr.newPath();
+        cr.moveTo(inset + r, 0);
+        cr.lineTo(w - inset - r, 0);
+        cr.arc(w - inset - r, r, r, -Math.PI / 2, 0);
+        cr.lineTo(w, shelfH - r);
+        cr.arc(w - r, shelfH - r, r, 0, Math.PI / 2);
+        cr.lineTo(r, shelfH);
+        cr.arc(r, shelfH - r, r, Math.PI / 2, Math.PI);
+        cr.lineTo(inset, r);
+        cr.arc(inset + r, r, r, Math.PI, 3 * Math.PI / 2);
+        cr.closePath();
+
+        // Fill with gradient
+        const grad = new Cairo.LinearGradient(0, 0, 0, shelfH);
+        grad.addColorStopRGBA(0, 1, 1, 1, topOp);
+        grad.addColorStopRGBA(1, 0, 0, 0, botOp);
+        cr.setSource(grad);
+        cr.fill();
+
+        // Top highlight along the shelf edge
+        cr.setSourceRGBA(1, 1, 1, hlOp);
+        cr.setLineWidth(1);
+        cr.moveTo(inset + r, 0.5);
+        cr.lineTo(w - inset - r, 0.5);
+        cr.stroke();
+
+        // Bottom shadow
+        cr.setSourceRGBA(0, 0, 0, brOp * 0.4);
+        cr.setLineWidth(1);
+        cr.moveTo(r, shelfH - 0.5);
+        cr.lineTo(w - r, shelfH - 0.5);
+        cr.stroke();
+
+        cr.restore();
+
+        cr.$dispose();
     }
 
     /**
@@ -447,7 +537,7 @@ export class ThemeManager {
         this._signalsHandler.addWithLabel(Labels.THEME_CHANGED, ...styleOnlyKeys.map(key => [
             Docking.DockManager.settings,
             `changed::${key}`,
-            () => this._adjustTheme(),
+            () => { this._adjustTheme(); this._updateShelfOverlay(); },
         ]));
 
         // Toggling wallpaper-adaptive-color needs to create/destroy the extractor
