@@ -736,6 +736,7 @@ class MountableVolumeAppInfo extends LocationAppInfo {
     }
 });
 
+// --- TODO: Extract to locations/trash.js (#832) ---
 const TrashAppInfo = GObject.registerClass({
     Implements: [Gio.AppInfo],
     Properties: {
@@ -1411,6 +1412,7 @@ export function getCategoryLabel(appIds) {
         .join(', ');
 }
 
+// --- TODO: Extract to locations/categories.js (#832) ---
 /**
  * 2x2 Composite-Icon Widget that shows up to four App-Icons at reduced size.
  */
@@ -1954,6 +1956,7 @@ export class CategoryIcon {
     }
 }
 
+// --- TODO: Extract to locations/removables.js (#832) ---
 /**
  * This class maintains Shell.App representations for removable devices
  * plugged into the system, and keeps the list of Apps up-to-date as
