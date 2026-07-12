@@ -26,7 +26,7 @@
 ---
 
 <p align="center">
-  <a href="docs/demo.mp4"><img src="docs/screenshot.png" alt="XDock Demo — click to play" width="960"></a>
+  <img src="docs/demo.gif" alt="XDock Demo" width="960">
 </p>
 
 ---
