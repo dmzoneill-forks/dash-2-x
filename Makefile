@@ -215,6 +215,14 @@ integration-test-screenshots: zip-file-nocheck
 	@echo "Screenshots saved to /tmp/xdock-test-*.png"
 	@ls -1 /tmp/xdock-test-*.png 2>/dev/null | wc -l | xargs -I{} echo "{} screenshots captured"
 
+# Visual regression: compare screenshots against baselines
+visual-regression: integration-test-screenshots
+	bash test/visual/scripts/compare.sh test/visual/baselines /tmp /tmp/xdock-test-diffs
+
+# Update visual baselines from latest screenshots
+update-baselines: integration-test-screenshots
+	bash test/visual/scripts/update-baselines.sh /tmp
+
 # Build zip without running lint (for testing)
 zip-file-nocheck: _build
 	mkdir -p _build/test/integration _build/test/smoke

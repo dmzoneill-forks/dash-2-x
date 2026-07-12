@@ -185,7 +185,7 @@ jobs:
 
           podman stop "${POD}" >/dev/null 2>&1 || true
 
-          # Check for failures
+          # Check for test failures
           if echo "$RESULT" | grep -q "SOME TESTS FAILED"; then
             echo "::error::Integration tests failed"
             echo "$RESULT" | grep "FAIL:"
@@ -194,11 +194,75 @@ jobs:
 
           echo "Integration tests passed"
 
-      - name: Upload test screenshots
+      - name: Visual regression comparison
         if: always()
+        run: |
+          sudo apt-get install -y -qq imagemagick bc 2>/dev/null || true
+          mkdir -p diffs
+          CHANGED=0
+          for actual in screenshots/xdock-test-*.png; do
+            [ -f "$actual" ] || continue
+            name=$(basename "$actual")
+            baseline="test/visual/baselines/$name"
+            if [ ! -f "$baseline" ]; then
+              echo "NEW: $name"
+              cp "$actual" "diffs/${name%.png}_new.png"
+              CHANGED=$((CHANGED + 1))
+              continue
+            fi
+            RMSE=$(compare -metric RMSE "$baseline" "$actual" "diffs/${name%.png}_diff.png" 2>&1 | \
+              grep -oP '\([\d.]+\)' | tr -d '()' || echo "999")
+            RMSE_PCT=$(echo "$RMSE * 100" | bc -l 2>/dev/null || echo "999")
+            if (( $(echo "$RMSE_PCT <= 1.0" | bc -l 2>/dev/null || echo 0) )); then
+              rm -f "diffs/${name%.png}_diff.png"
+            else
+              echo "CHANGED: $name (RMSE: ${RMSE_PCT}%)"
+              cp "$baseline" "diffs/${name%.png}_baseline.png"
+              cp "$actual" "diffs/${name%.png}_actual.png"
+              CHANGED=$((CHANGED + 1))
+            fi
+          done
+          echo "visual_changes=$CHANGED" >> "$GITHUB_OUTPUT"
+          if [ "$CHANGED" -gt 0 ]; then
+            echo "::warning::$CHANGED visual differences detected"
+          else
+            echo "All screenshots match baselines"
+          fi
+        id: visual
+
+      - name: Upload visual diffs (only if changed)
+        if: always() && steps.visual.outputs.visual_changes != '0'
         uses: actions/upload-artifact@v4
         with:
-          name: test-screenshots-f${{ matrix.fedora }}
-          path: screenshots/xdock-test-*.png
+          name: visual-regression-diffs-f${{ matrix.fedora }}
+          path: diffs/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14
+
+      - name: Comment on PR with visual changes
+        if: github.event_name == 'pull_request' && steps.visual.outputs.visual_changes != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const changes = '${{ steps.visual.outputs.visual_changes }}';
+            const body = `## Visual Regression Report
+
+            **${changes} screenshot(s) differ from baselines.**
+
+            Download the \`visual-regression-diffs\` artifact to see:
+            - \`*_baseline.png\` — expected (from \`test/visual/baselines/\`)
+            - \`*_actual.png\` — what the PR produces
+            - \`*_diff.png\` — highlighted differences
+
+            **To update baselines** (if the changes are intentional):
+            \`\`\`bash
+            make update-baselines
+            git add test/visual/baselines/
+            git commit -m "Update visual baselines"
+            \`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body,
+            });
