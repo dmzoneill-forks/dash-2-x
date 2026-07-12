@@ -155,6 +155,7 @@ _build: all
 	mkdir -p _build
 	cp $(BASE_MODULES) $(EXTRA_MODULES) _build
 	cp -a dependencies _build
+	cp -a indicators _build
 	cp stylesheet.css _build
 	mkdir -p _build/media
 	cd media ; cp $(EXTRA_MEDIA) ../_build/media/
