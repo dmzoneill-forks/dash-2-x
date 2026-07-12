@@ -21,6 +21,7 @@
 <p align="center">
   <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dmzoneill/93eef357f1e61f8d337a348fa5c180f0/raw/xdock-unit-tests.json" alt="Unit Tests">
   <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dmzoneill/93eef357f1e61f8d337a348fa5c180f0/raw/xdock-integration-tests.json" alt="Integration Tests">
+  <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/dmzoneill/93eef357f1e61f8d337a348fa5c180f0/raw/xdock-coverage.json" alt="Coverage">
 </p>
 
 ---

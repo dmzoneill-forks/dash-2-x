@@ -39,6 +39,12 @@ jobs:
           echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
           echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
           echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          # Extract coverage from json-summary
+          COV="0"
+          if [ -f coverage/coverage-summary.json ]; then
+            COV=$(python3 -c "import json; d=json.load(open('coverage/coverage-summary.json')); print(round(d['total']['lines']['pct']))" 2>/dev/null || echo "0")
+          fi
+          echo "coverage=$COV" >> "$GITHUB_OUTPUT"
           [ "$FAILED" -eq 0 ] || exit 1
 
       - name: Update unit test badge
@@ -51,6 +57,19 @@ jobs:
           label: unit tests
           message: "${{ steps.jest.outputs.passed }}/${{ steps.jest.outputs.total }} passed"
           color: ${{ steps.jest.outputs.failed == '0' && 'brightgreen' || 'red' }}
+
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/master' && always()
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.BADGE_GIST_ID }}
+          filename: xdock-coverage.json
+          label: coverage
+          message: "${{ steps.jest.outputs.coverage }}%"
+          valColorRange: ${{ steps.jest.outputs.coverage }}
+          minColorRange: 0
+          maxColorRange: 100
 
   build-container:
     name: Build Container (${{ matrix.name }})

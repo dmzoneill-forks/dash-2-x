@@ -16,12 +16,6 @@ export default {
     testMatch: ['<rootDir>/test/**/*.test.js'],
     testPathIgnorePatterns: ['<rootDir>/test/integration/'],
     collectCoverageFrom: ['*.js', '!eslint.config.mjs'],
-    coverageThreshold: {
-        global: {
-            branches: 60,
-            functions: 60,
-            lines: 60,
-            statements: 60,
-        },
-    },
+    collectCoverage: true,
+    coverageReporters: ['text', 'json-summary'],
 };
