@@ -25,11 +25,16 @@ jobs:
       - name: Run unit tests
         id: jest
         run: |
-          npx jest --json --outputFile=jest-results.json 2>/dev/null || true
-          npm test 2>&1 | tee jest-output.txt
-          PASSED=$(grep -oP '\d+ passing' jest-output.txt | grep -oP '\d+' || echo "0")
-          FAILED=$(grep -oP '\d+ failing' jest-output.txt | grep -oP '\d+' || echo "0")
-          TOTAL=$((PASSED + FAILED))
+          npm test -- --json --outputFile=jest-results.json 2>&1 | tee jest-output.txt || true
+          if [ -f jest-results.json ]; then
+            PASSED=$(python3 -c "import json; d=json.load(open('jest-results.json')); print(d.get('numPassedTests',0))" 2>/dev/null || echo "0")
+            FAILED=$(python3 -c "import json; d=json.load(open('jest-results.json')); print(d.get('numFailedTests',0))" 2>/dev/null || echo "0")
+            TOTAL=$((PASSED + FAILED))
+          else
+            PASSED=$(grep -oP 'Tests:\s+\K\d+(?= passed)' jest-output.txt || echo "0")
+            FAILED=$(grep -oP 'Tests:\s+.*\K\d+(?= failed)' jest-output.txt || echo "0")
+            TOTAL=$((PASSED + FAILED))
+          fi
           echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
           echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
           echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
@@ -44,7 +49,7 @@ jobs:
           filename: xdock-unit-tests.json
           label: unit tests
           message: "${{ steps.jest.outputs.passed }}/${{ steps.jest.outputs.total }} passed"
-          color: ${{ steps.jest.outputs.failed == '0' && 'brightgreen' || 'red' }}"
+          color: ${{ steps.jest.outputs.failed == '0' && 'brightgreen' || 'red' }}
 
   smoke-test:
     name: Smoke Test (${{ matrix.name }})
@@ -176,12 +181,8 @@ jobs:
             sleep 2
           done
 
-          # Copy extension and test runner
+          # Copy and install extension (test files are included in the zip)
           podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
-          podman cp test/integration "${POD}:/home/gnomeshell/test/integration"
-          podman cp test/smoke "${POD}:/home/gnomeshell/test/smoke"
-
-          # Install extension
           do_in_pod gnome-extensions install "${UUID}.zip" || true
 
           # Run integration tests headless
@@ -199,9 +200,10 @@ jobs:
 
           echo "$RESULT"
 
-          # Parse test counts
-          PASSED=$(echo "$RESULT" | grep -oP '\d+ passed' | grep -oP '\d+' || echo "0")
-          FAILED=$(echo "$RESULT" | grep -oP '\d+ failed' | grep -oP '\d+' || echo "0")
+          # Parse test counts from "Results: X passed, Y failed"
+          RESULTS_LINE=$(echo "$RESULT" | grep 'Results:' || echo "")
+          PASSED=$(echo "$RESULTS_LINE" | grep -oP '\d+(?= passed)' || echo "0")
+          FAILED=$(echo "$RESULTS_LINE" | grep -oP '\d+(?= failed)' || echo "0")
           TOTAL=$((PASSED + FAILED))
           echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
           echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
