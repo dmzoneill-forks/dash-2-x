@@ -30,13 +30,28 @@ function discoverTests(dir) {
     return testFiles.sort();
 }
 
+let _cachedSchemaSource = null;
+function _getXDockSettings() {
+    if (!_cachedSchemaSource) {
+        const ext = Main.extensionManager.lookup(UUID);
+        const schemaDir = ext.dir.get_child('schemas');
+        _cachedSchemaSource = Gio.SettingsSchemaSource.new_from_directory(
+            schemaDir.get_path(),
+            Gio.SettingsSchemaSource.get_default(),
+            false);
+    }
+    const schema = _cachedSchemaSource.lookup(
+        'org.gnome.shell.extensions.xdock', true);
+    return new Gio.Settings({settings_schema: schema});
+}
+
 function loadTestFile(dir, filename) {
     const path = GLib.build_filenamev([dir, filename]);
     try {
         const [, bytes] = GLib.file_get_contents(path);
         const source = new TextDecoder().decode(bytes);
         const exports = {};
-        new Function('exports', source)(exports);
+        new Function('exports', 'getXDockSettings', source)(exports, _getXDockSettings);
         if (typeof exports.getTests === 'function')
             return exports.getTests();
     } catch (e) {

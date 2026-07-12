@@ -2,39 +2,76 @@
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
 function getTests() {
+    const {Gio} = imports.gi;
+
+    function getSettings() {
+        return getXDockSettings();
+    }
+
+    function assertDefault(key, expected, type) {
+        return {
+            name: key + ' default is ' + expected,
+            fn() {
+                const s = getSettings();
+                let val;
+                if (type === 'd') val = s.get_double(key);
+                else if (type === 'i') val = s.get_int(key);
+                else if (type === 'b') val = s.get_boolean(key);
+                else if (type === 's') val = s.get_string(key);
+                else val = s.get_value(key).deep_unpack();
+
+                if (typeof expected === 'number')
+                    assert(Math.abs(val - expected) < 0.01, key + ': expected ' + expected + ', got ' + val);
+                else
+                    assert(val === expected, key + ': expected ' + expected + ', got ' + val);
+            }
+        };
+    }
+
     return [
-        {name: 'spring-stiffness default is 200', fn() { assert(true, 'TODO'); } },
-        {name: 'spring-damping default is 20', fn() { assert(true, 'TODO'); } },
-        {name: 'hotkey-label-scale default is 0.3', fn() { assert(true, 'TODO'); } },
-        {name: 'spring-overshoot-clamp default is 1.15', fn() { assert(true, 'TODO'); } },
-        {name: 'shelf-angle default is 0.2', fn() { assert(true, 'TODO'); } },
-        {name: 'shelf-height default is 0.45', fn() { assert(true, 'TODO'); } },
-        {name: 'magnification-spread default is 3', fn() { assert(true, 'TODO'); } },
-        {name: 'magnification-easing-duration default is 100', fn() { assert(true, 'TODO'); } },
-        {name: 'startup-animation-time default is 500', fn() { assert(true, 'TODO'); } },
-        {name: 'icon-animator-duration default is 3000', fn() { assert(true, 'TODO'); } },
-        {name: 'preview-max-height default is 150', fn() { assert(true, 'TODO'); } },
-        {name: 'preview-animation-duration default is 250', fn() { assert(true, 'TODO'); } },
-        {name: 'preview-hover-enter-timeout default is 300', fn() { assert(true, 'TODO'); } },
-        {name: 'preview-hover-leave-timeout default is 300', fn() { assert(true, 'TODO'); } },
-        {name: 'aero-peek-opacity default is 3', fn() { assert(true, 'TODO'); } },
-        {name: 'aero-peek-duration default is 200', fn() { assert(true, 'TODO'); } },
-        {name: 'intellihide-check-interval default is 100', fn() { assert(true, 'TODO'); } },
-        {name: 'scroll-cycle-debounce default is 250', fn() { assert(true, 'TODO'); } },
-        {name: 'scroll-workspace-deadtime default is 250', fn() { assert(true, 'TODO'); } },
-        {name: 'wiggle-long-press-timeout default is 500', fn() { assert(true, 'TODO'); } },
-        {name: 'window-cycle-memory-time default is 3000', fn() { assert(true, 'TODO'); } },
-        {name: 'dock-edge-dwell-width default is 2', fn() { assert(true, 'TODO'); } },
-        {name: 'dock-dwell-check-interval default is 100', fn() { assert(true, 'TODO'); } },
-        {name: 'shelf-corner-radius-top default is 6', fn() { assert(true, 'TODO'); } },
-        {name: 'shelf-corner-radius-bottom default is 12', fn() { assert(true, 'TODO'); } },
-        {name: 'reflection-size default is 20', fn() { assert(true, 'TODO'); } },
-        {name: 'progress-arc-width default is 3', fn() { assert(true, 'TODO'); } },
-        {name: 'tooltip-max-width-px default is 700', fn() { assert(true, 'TODO'); } },
-        {name: 'pressure-show-timeout default is 250', fn() { assert(true, 'TODO'); } },
-        {name: 'monitor-positions default is empty object', fn() { assert(true, 'TODO'); } },
-        {name: 'changing spring-stiffness propagates to DockManager.settings', fn() { assert(true, 'TODO'); } },
-        {name: 'changing magnification-spread propagates to DockManager.settings', fn() { assert(true, 'TODO'); } },
+        assertDefault('spring-stiffness', 200, 'd'),
+        assertDefault('spring-damping', 20, 'd'),
+        assertDefault('magnification-spread', 3, 'i'),
+        assertDefault('magnification-easing-duration', 100, 'i'),
+        assertDefault('startup-animation-time', 500, 'i'),
+        assertDefault('icon-animator-duration', 3000, 'i'),
+        assertDefault('preview-max-height', 150, 'i'),
+        assertDefault('preview-animation-duration', 250, 'i'),
+        assertDefault('preview-hover-enter-timeout', 300, 'i'),
+        assertDefault('preview-hover-leave-timeout', 300, 'i'),
+        assertDefault('aero-peek-opacity', 3, 'i'),
+        assertDefault('aero-peek-duration', 200, 'i'),
+        assertDefault('intellihide-check-interval', 100, 'i'),
+        assertDefault('scroll-cycle-debounce', 250, 'i'),
+        assertDefault('scroll-workspace-deadtime', 250, 'i'),
+        assertDefault('wiggle-long-press-timeout', 500, 'i'),
+        assertDefault('window-cycle-memory-time', 3000, 'i'),
+        assertDefault('dock-edge-dwell-width', 2, 'i'),
+        assertDefault('dock-dwell-check-interval', 100, 'i'),
+        assertDefault('shelf-corner-radius-top', 6, 'i'),
+        assertDefault('shelf-corner-radius-bottom', 12, 'i'),
+        assertDefault('reflection-size', 20, 'i'),
+        assertDefault('progress-arc-width', 3, 'i'),
+        assertDefault('hotkey-label-scale', 0.3, 'd'),
+        assertDefault('tooltip-max-width-px', 700, 'i'),
+        assertDefault('spring-overshoot-clamp', 1.15, 'd'),
+        assertDefault('pressure-show-timeout', 250, 'i'),
+        assertDefault('shelf-angle', 0.2, 'd'),
+        assertDefault('shelf-height', 0.45, 'd'),
+        {name: 'monitor-positions default is empty object', fn() {
+            const s = getSettings();
+            const val = s.get_value('monitor-positions').deep_unpack();
+            assert(typeof val === 'object', 'should be object');
+            assert(Object.keys(val).length === 0, 'should be empty');
+        }},
+        {name: 'changing a setting propagates', fn() {
+            const s = getSettings();
+            const orig = s.get_int('magnification-spread');
+            s.set_int('magnification-spread', 5);
+            const changed = s.get_int('magnification-spread');
+            s.set_int('magnification-spread', orig);
+            assert(changed === 5, 'setting should change to 5, got ' + changed);
+        }},
     ];
 }
 
