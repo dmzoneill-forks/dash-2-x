@@ -315,7 +315,6 @@ export class ThemeManager {
     }
 
     updateCustomTheme() {
-        print(`XDOCK-SIZE [${(GLib.get_monotonic_time() / 1e6).toFixed(1)}s] updateCustomTheme called`);
         if (this._destroyed)
             throw new Error(`Impossible to update a destroyed ${this.constructor.name}`);
         this._updateCustomStyleClasses();
@@ -326,7 +325,7 @@ export class ThemeManager {
         this.emit('updated');
     }
 
-    _buildShelfStyle(position) {
+    _buildShelfStyle(_position) {
         const {settings} = Docking.DockManager;
         if (settings.dockStyle !== DockStyle.SHELF)
             return '';
@@ -537,12 +536,16 @@ export class ThemeManager {
             'shelf-height',
             'shelf-corner-radius-top',
             'shelf-corner-radius-bottom',
-            'shelf-reflection-opacity'];
+            'shelf-reflection-opacity',
+        ];
 
         this._signalsHandler.addWithLabel(Labels.THEME_CHANGED, ...styleOnlyKeys.map(key => [
             Docking.DockManager.settings,
             `changed::${key}`,
-            () => { this._adjustTheme(); this._updateShelfOverlay(); },
+            () => {
+                this._adjustTheme();
+                this._updateShelfOverlay();
+            },
         ]));
 
         // Toggling wallpaper-adaptive-color needs to create/destroy the extractor

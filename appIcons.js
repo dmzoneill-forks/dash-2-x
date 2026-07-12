@@ -1328,7 +1328,9 @@ export const DockAbstractAppIcon = GObject.registerClass({
         // Set the font size to something smaller than the whole icon so it is
         // still visible. The border radius is large to make the shape circular
         const [minWidth_, natWidth] = this._iconContainer.get_preferred_width(-1);
-        const fontSize = Math.round(Math.max(12, Docking.DockManager.settings.hotkeyLabelScale * natWidth) / scaleFactor);
+        const labelScale = Docking.DockManager.settings.hotkeyLabelScale;
+        const fontSize = Math.round(
+            Math.max(12, labelScale * natWidth) / scaleFactor);
         const size = Math.round(fontSize * 1.2);
         this._numberOverlayLabel.set_style(
             `font-size: ${fontSize}px;` +
@@ -1484,8 +1486,11 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
         if (recentlyClickedAppLoopId > 0)
             GLib.source_remove(recentlyClickedAppLoopId);
+        const memoryTime =
+            Docking.DockManager.settings.windowCycleMemoryTime;
         recentlyClickedAppLoopId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT, Docking.DockManager.settings.windowCycleMemoryTime, this._resetRecentlyClickedApp);
+            GLib.PRIORITY_DEFAULT, memoryTime,
+            this._resetRecentlyClickedApp);
 
         // If there isn't already a list of windows for the current app,
         // or the stored list is outdated, use the current windows list.

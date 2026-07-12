@@ -411,25 +411,6 @@ const DockedDash = GObject.registerClass({
         if (this.dash._magnificationEnabled)
             this._onMagnificationChanged(this.dash, true);
 
-        // === SIZE CHANGE INSTRUMENTATION ===
-        const logSize = (label, actor) => {
-            const now = GLib.get_monotonic_time() / 1e6;
-            print(`XDOCK-SIZE [${now.toFixed(1)}s] ${label}: ${actor.width}x${actor.height} ` +
-                  `ty=${actor.translation_y.toFixed(0)} offscreen=${actor.offscreen_redirect} ` +
-                  `ctv=${actor.clip_to_view ?? '-'} cta=${actor.clip_to_allocation}`);
-        };
-        this._signalsHandler.add(
-            [this, 'notify::height', () => logSize('DockedDash', this)],
-            [this, 'notify::width', () => logSize('DockedDash', this)],
-            [this._box, 'notify::height', () => logSize('dashtodockBox', this._box)],
-            [this._box, 'notify::width', () => logSize('dashtodockBox', this._box)],
-            [this.dash, 'notify::height', () => logSize('DockDash', this.dash)],
-            [this.dash, 'notify::width', () => logSize('DockDash', this.dash)],
-        );
-        logSize('INIT-DockedDash', this);
-        logSize('INIT-dashtodockBox', this._box);
-        logSize('INIT-DockDash', this.dash);
-        // === END INSTRUMENTATION ===
 
         if (!Main.overview.isDummy) {
             this._signalsHandler.add([
@@ -1476,52 +1457,52 @@ const DockedDash = GObject.registerClass({
         this._triggerTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,
             DockManager.settings.pressureShowTimeout ?? 250, () => {
             // Guard against accessing destroyed state
-            if (!this._staticBox || !this._monitor) {
-                this._triggerTimeoutId = 0;
-                return GLib.SOURCE_REMOVE;
-            }
-            const [x, y, mods_] = global.get_pointer();
-            let shouldHide = true;
-            switch (this._position) {
-            case St.Side.LEFT:
-                if (x <= this._staticBox.x2 &&
+                if (!this._staticBox || !this._monitor) {
+                    this._triggerTimeoutId = 0;
+                    return GLib.SOURCE_REMOVE;
+                }
+                const [x, y, mods_] = global.get_pointer();
+                let shouldHide = true;
+                switch (this._position) {
+                case St.Side.LEFT:
+                    if (x <= this._staticBox.x2 &&
                     x >= this._monitor.x &&
                     y >= this._monitor.y &&
                     y <= this._monitor.y + this._monitor.height)
-                    shouldHide = false;
+                        shouldHide = false;
 
-                break;
-            case St.Side.RIGHT:
-                if (x >= this._staticBox.x1 &&
+                    break;
+                case St.Side.RIGHT:
+                    if (x >= this._staticBox.x1 &&
                     x <= this._monitor.x + this._monitor.width &&
                     y >= this._monitor.y &&
                     y <= this._monitor.y + this._monitor.height)
-                    shouldHide = false;
+                        shouldHide = false;
 
-                break;
-            case St.Side.TOP:
-                if (x >= this._monitor.x &&
+                    break;
+                case St.Side.TOP:
+                    if (x >= this._monitor.x &&
                     x <= this._monitor.x + this._monitor.width &&
                     y <= this._staticBox.y2 &&
                     y >= this._monitor.y)
-                    shouldHide = false;
+                        shouldHide = false;
 
-                break;
-            case St.Side.BOTTOM:
-                if (x >= this._monitor.x &&
+                    break;
+                case St.Side.BOTTOM:
+                    if (x >= this._monitor.x &&
                     x <= this._monitor.x + this._monitor.width &&
                     y >= this._staticBox.y1 &&
                     y <= this._monitor.y + this._monitor.height)
-                    shouldHide = false;
-            }
-            if (shouldHide) {
-                this._triggerTimeoutId = 0;
-                this._hoverChanged();
-                return GLib.SOURCE_REMOVE;
-            } else {
-                return GLib.SOURCE_CONTINUE;
-            }
-        });
+                        shouldHide = false;
+                }
+                if (shouldHide) {
+                    this._triggerTimeoutId = 0;
+                    this._hoverChanged();
+                    return GLib.SOURCE_REMOVE;
+                } else {
+                    return GLib.SOURCE_CONTINUE;
+                }
+            });
 
         this._show();
     }
@@ -1617,8 +1598,6 @@ const DockedDash = GObject.registerClass({
     }
 
     _resetPosition() {
-        print(`XDOCK-SIZE [${(GLib.get_monotonic_time() / 1e6).toFixed(1)}s] _resetPosition called ` +
-              `${this.width}x${this.height} ty=${this.translation_y.toFixed(0)}`);
         // Ensure variables linked to settings are updated.
         this._updateVisibilityMode();
 
