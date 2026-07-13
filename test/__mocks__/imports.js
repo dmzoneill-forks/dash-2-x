@@ -132,6 +132,7 @@ export const BounceAnimation = {
 export const DockDash = {
     DockDash: class {
         constructor() {
+            this._dashSignals = {};
             this._box = {
                 get_children: () => [],
                 add_child: () => {},
@@ -169,13 +170,49 @@ export const DockDash = {
         _queueRedisplay() {}
         getAppIcons() { return []; }
         destroy() {}
-        connect() { return _nextSigId++; }
+        connect(name, cb) {
+            this._dashSignals[name] = this._dashSignals[name] ?? [];
+            const id = _nextSigId++;
+            this._dashSignals[name].push({id, cb});
+            return id;
+        }
         disconnect() {}
         show() { this._visible = true; }
         hide() { this._visible = false; }
         toggleNumberOverlay() {}
         set visible(v) { this._visible = v; }
         get visible() { return this._visible; }
+        set opacity(v) { this._opacity = v; }
+        emit(name, ...args) {
+            if (!this._dashSignals?.[name]) return;
+            for (const s of [...this._dashSignals[name]])
+                s.cb(this, ...args);
+        }
+        get opacity() { return this._opacity ?? 255; }
+        set translation_x(v) { this._tx = v; }
+        get translation_x() { return this._tx ?? 0; }
+        set translation_y(v) { this._ty = v; }
+        get translation_y() { return this._ty ?? 0; }
+        set width(v) { this._w = v; }
+        get width() { return this._w ?? 0; }
+        set height(v) { this._h = v; }
+        get height() { return this._h ?? 0; }
+        set(params) { Object.assign(this, params); }
+        ease(params) { Object.assign(this, params); if (params?.onComplete) params.onComplete(); }
+        get_parent() { return null; }
+        add_child() {}
+        remove_child() {}
+        emit() {}
+        set_clip_to_allocation() {}
+        remove_clip() {}
+        set_clip() {}
+        remove_all_transitions() {}
+        set_style() {}
+        add_style_class_name() {}
+        remove_style_class_name() {}
+        has_style_class_name() { return false; }
+        get_stage() { return null; }
+        get_transformed_position() { return [0, 0]; }
     },
 };
 export const DBusMenuUtils = {haveDBusMenu: async () => null};
@@ -196,15 +233,27 @@ export const FileManager1API = {
 };
 export const Intellihide = {
     Intellihide: class {
-        constructor() {}
+        constructor() {
+            this._signals = {};
+        }
         enable() {}
         disable() {}
         destroy() {}
         forceUpdate() {}
         getOverlapStatus() { return false; }
         updateTargetBox() {}
-        connect() { return _nextSigId++; }
+        connect(name, cb) {
+            this._signals[name] = this._signals[name] ?? [];
+            const id = _nextSigId++;
+            this._signals[name].push({id, cb});
+            return id;
+        }
         disconnect() {}
+        emit(name, ...args) {
+            if (!this._signals?.[name]) return;
+            for (const s of [...this._signals[name]])
+                s.cb(this, ...args);
+        }
     },
 };
 export const LauncherAPI = {
@@ -320,7 +369,7 @@ export const Utils = {
     },
     addActor: (parent, child) => { if (parent?.add_child) parent.add_child(child); },
     getPosition: () => 2, // St.Side.BOTTOM
-    getSecondaryPosition: () => 3, // St.Side.LEFT
+    getSecondaryPosition: () => 3, // St.Side.TOP
     magnificationFalloff: (distance, spread) => {
         if (spread <= 0)
             return 0.0;

@@ -174,6 +174,11 @@ class MockActor {
     get_transformed_size() { return [this._width, this._height]; }
     get_preferred_width() { return [0, this._width]; }
     get_preferred_height() { return [0, this._height]; }
+    get_preferred_size() { return [0, 0, this._width, this._height]; }
+    vfunc_get_preferred_width(forWidth) { return [0, this._width]; }
+    vfunc_get_preferred_height(forHeight) { return [0, this._height]; }
+    vfunc_allocate(box) { this._allocation = box; }
+    vfunc_get_paint_volume() { return true; }
     get_allocation() { return this._allocation; }
     set_allocation(a) { this._allocation = a; }
     allocate(box) { this._allocation = box; }
@@ -312,6 +317,9 @@ class ClutterActorBox {
     }
     get_width() { return this.x2 - this.x1; }
     get_height() { return this.y2 - this.y1; }
+    init_rect(x, y, w, h) { this.x1 = x; this.y1 = y; this.x2 = x + w; this.y2 = y + h; }
+    set_origin(x, y) { const w = this.x2 - this.x1; const h = this.y2 - this.y1; this.x1 = x; this.y1 = y; this.x2 = x + w; this.y2 = y + h; }
+    set_size(w, h) { this.x2 = this.x1 + w; this.y2 = this.y1 + h; }
 }
 
 class ClutterTimeline extends MockActor {
@@ -379,8 +387,11 @@ class StBoxLayout extends StWidget {
     constructor(params) {
         super(params);
         this.vertical = params?.vertical ?? false;
+        this.hover = false;
     }
     set_vertical(v) { this.vertical = v; }
+    sync_hover() {}
+    navigate_focus() {}
 }
 StBoxLayout.$gtype = 'StBoxLayout';
 
@@ -444,9 +455,33 @@ export const St = {
 
 export const Shell = {
     AppState: {STOPPED: 0, STARTING: 1, RUNNING: 2},
-    WindowTracker: {get_default: () => ({get_window_app: () => null, connect: () => 0, disconnect: () => {}})},
-    AppSystem: {get_default: () => ({get_running: () => [], lookup_app: () => null, connect: () => 0, disconnect: () => {}})},
-    App: class {},
+    WindowTracker: (() => {
+        class WT {
+            get_window_app() { return null; }
+            get_app_from_pid() { return null; }
+            get focus_app() { return null; }
+            connect() { return 0; }
+            disconnect() {}
+        }
+        WT.get_default = () => new WT();
+        return WT;
+    })(),
+    AppSystem: (() => {
+        class AS {
+            get_running() { return []; }
+            lookup_app() { return null; }
+            connect() { return 0; }
+            disconnect() {}
+        }
+        AS.get_default = () => new AS();
+        return AS;
+    })(),
+    App: class {
+        activate() {}
+        open_new_window() {}
+        get_windows() { return []; }
+        get_pids() { return []; }
+    },
     ActionMode: {NORMAL: 1, OVERVIEW: 2, POPUP: 4},
     Global: class {},
     Screenshot: class { screenshot_stage_to_content() { return Promise.resolve(null); } },
@@ -457,8 +492,8 @@ export const Shell = {
 
 export const GLib = {
     idle_add: (_priority, cb) => { if (cb) cb(); return 1; },
-    timeout_add: (_priority, _ms, cb) => { const id = _nextSignalId++; return id; },
-    timeout_add_seconds: (_priority, _s, cb) => { const id = _nextSignalId++; return id; },
+    timeout_add: (_priority, _ms, cb) => { const id = _nextSignalId++; try { if (cb) cb(); } catch(e) { /* ignore callback errors */ } return id; },
+    timeout_add_seconds: (_priority, _s, cb) => { const id = _nextSignalId++; try { if (cb) cb(); } catch(e) { /* ignore callback errors */ } return id; },
     source_remove: () => {},
     get_monotonic_time: () => 0,
     PRIORITY_DEFAULT: 0,
@@ -470,7 +505,7 @@ export const GLib = {
     MAXINT32: 2147483647,
     MAXUINT32: 4294967295,
     Source: {set_name_by_id: () => {}},
-    Variant: class { constructor(type, val) { this._type = type; this._val = val; } deep_unpack() { return this._val; } },
+    Variant: class { constructor(type, val) { this._type = type; this._val = val; } deep_unpack() { return this._val; } recursiveUnpack() { return this._val; } deepUnpack() { return [this._type, this._val]; } unpack() { return this._val; } },
     VariantType: class { constructor(t) { this._t = t; } },
 };
 
@@ -541,8 +576,9 @@ export const Meta = {
     },
     MaximizeFlags: {BOTH: 3, HORIZONTAL: 1, VERTICAL: 2},
     FrameType: {NORMAL: 0},
-    KeyBindingFlags: {NONE: 0},
+    KeyBindingFlags: {NONE: 0, IGNORE_AUTOREPEAT: 1},
     VirtualModifier: {SHIFT_MASK: 1},
+    MotionDirection: {UP: 0, DOWN: 1, LEFT: 2, RIGHT: 3},
 };
 
 // --- Misc ---

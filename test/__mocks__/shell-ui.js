@@ -51,18 +51,35 @@ export const Main = {
         overviewGroup: _mockActor(),
         hotCorners: [],
     },
-    overview: {
-        visible: false,
-        visibleTarget: false,
-        isDummy: false,
-        dash: _mockActor(),
-        hide: () => {},
-        show: () => {},
-        toggle: () => {},
-        connect: () => 0,
-        disconnect: () => {},
-        animationInProgress: false,
-    },
+    overview: (() => {
+        const signals = {};
+        let nextId = 1;
+        return {
+            visible: false,
+            visibleTarget: false,
+            isDummy: false,
+            dash: _mockActor(),
+            hide: () => {},
+            show: () => {},
+            toggle: () => {},
+            connect: (name, cb) => {
+                signals[name] = signals[name] ?? [];
+                const id = nextId++;
+                signals[name].push({id, cb});
+                return id;
+            },
+            disconnect: (id) => {
+                for (const name of Object.keys(signals))
+                    signals[name] = signals[name].filter(s => s.id !== id);
+            },
+            emit: (name, ...args) => {
+                if (!signals[name]) return;
+                for (const s of [...signals[name]])
+                    s.cb(...args);
+            },
+            animationInProgress: false,
+        };
+    })(),
     panel: {
         height: 32,
         x: 0,
@@ -334,6 +351,7 @@ export const AppFavorites = {
         getFavoriteMap: () => ({}),
         getFavorites: () => [],
         addFavorite: () => {},
+        addFavoriteAtPos: () => {},
         removeFavorite: () => {},
         moveFavoriteToPos: () => {},
         isFavorite: () => false,
@@ -364,6 +382,9 @@ export const Overview = {ANIMATION_TIME: 250};
 
 export const OverviewControls = {
     ControlsState: {HIDDEN: 0, WINDOW_PICKER: 1, APP_GRID: 2},
+    OverviewAdjustment: class {
+        constructor() { this.value = 0; }
+    },
 };
 
 export const AppDisplay = {
@@ -413,7 +434,13 @@ export const WorkspacesView = {
 };
 
 export const WorkspaceSwitcherPopup = {
-    WorkspaceSwitcherPopup: class {},
+    WorkspaceSwitcherPopup: class {
+        constructor() { this.reactive = true; }
+        display() {}
+        destroy() {}
+        connect(name, cb) { return 0; }
+        disconnect() {}
+    },
 };
 
 export const SearchController = {};
