@@ -187,10 +187,24 @@ export function run(_argv) {
         return;
     }
 
-    const ext = manager.lookup(UUID);
+    // Wait for the extension to be loaded and enabled (up to 30s).
+    // gnome-shell-test-tool calls run() early — extensions may still be loading.
+    let ext = manager.lookup(UUID);
     if (!ext || ext.state !== 1) {
-        log(`FAIL: Extension state=${ext?.state}, expected 1`);
-        return;
+        log(`Extension not ready (state=${ext?.state}), waiting...`);
+        const ctx = GLib.MainContext.default();
+        const deadline = GLib.get_monotonic_time() + 30 * 1000000;
+        while (GLib.get_monotonic_time() < deadline) {
+            ctx.iteration(false);
+            ext = manager.lookup(UUID);
+            if (ext && ext.state === 1)
+                break;
+        }
+        if (!ext || ext.state !== 1) {
+            log(`FAIL: Extension state=${ext?.state} after 30s wait, expected 1 (ENABLED)`);
+            log(`Available extensions: ${manager.getUuids?.()?.join(', ') ?? 'unknown'}`);
+            return;
+        }
     }
     log('Extension loaded and enabled');
 
