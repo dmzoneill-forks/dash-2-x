@@ -2283,11 +2283,11 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
  * @returns {string} Settings key for the action to look up
  */
 export function resolveClickSettingsKey(button, shiftHeld) {
-    if (button === 2) {
+    if (button === 2)
         return shiftHeld ? 'shift-middle-click-action' : 'middle-click-action';
-    } else if (button === 1) {
+    else if (button === 1)
         return shiftHeld ? 'shift-click-action' : 'click-action';
-    }
+
     return null;
 }
 
