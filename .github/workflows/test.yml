@@ -227,75 +227,70 @@ jobs:
             sleep 2
           done
 
-          # Copy extension zip and test runner into container
-          podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
+          # Install extension into container
+          podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/"
+          podman exec -u gnomeshell "${POD}" bash -c '
+            mkdir -p ~/.local/share/gnome-shell/extensions/'"${UUID}"'
+            cd ~/.local/share/gnome-shell/extensions/'"${UUID}"'
+            unzip -qo ~/'"${UUID}"'.zip
+          '
+
+          # Copy test runner separately (automation script must be on disk)
           podman exec "${POD}" mkdir -p /home/gnomeshell/test-integration
           podman cp test/integration/. "${POD}:/home/gnomeshell/test-integration/"
-          podman exec "${POD}" chown -R gnomeshell:gnomeshell /home/gnomeshell/test-integration
+          podman exec "${POD}" chown -R gnomeshell:gnomeshell /home/gnomeshell
 
-          echo "=== Container contents ==="
-          podman exec "${POD}" ls -la /home/gnomeshell/${UUID}.zip /home/gnomeshell/test-integration/runner.js 2>&1 || true
-
-          # Start gnome-shell headless (same as smoke test — no --automation-script)
-          podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
-          do_in_pod gnome-extensions install "${UUID}.zip" || true
-
-          # Start gnome-shell headless and attempt to run tests.
-          # NOTE: gnome-shell in headless mode requires session services
-          # (polkit, accountsservice, gsettings-daemon) that aren't available
-          # in the minimal CI container. The extension may not load.
-          podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
-          do_in_pod gnome-extensions install "${UUID}.zip" || true
-
-          echo "=== Starting GNOME Shell ==="
-          podman exec -d --user gnomeshell "${POD}" bash -c '
-            export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus
+          # Run gnome-shell headless with automation script.
+          # Uses dbus-run-session for D-Bus, dconf to pre-enable the extension,
+          # and systemd logind (running in container) for session support.
+          echo "=== Running integration tests ==="
+          RESULT=$(podman exec -u gnomeshell \
+            -e XDG_RUNTIME_DIR=/tmp/runtime-1000 \
+            "${POD}" bash -c '
+            mkdir -p /tmp/runtime-1000
             export LIBGL_ALWAYS_SOFTWARE=1
-            rm -f /run/user/$(id -u)/gnome-shell-disable-extensions
-            gnome-shell --headless --virtual-monitor 1920x1080 &
-            SHELL_PID=$!
-            sleep 12
-            gnome-extensions enable '"${UUID}"' 2>/dev/null || true
-            # Keep the session alive while gnome-shell runs
-            wait $SHELL_PID
-          '
-          sleep 15
+            export XDOCK_TEST_HOLD=0
+            export XDOCK_TEST_SCREENSHOTS=1
 
-          # Check if gnome-shell survived initialization
-          SHELL_ALIVE=$(podman exec "${POD}" pgrep -u gnomeshell gnome-shell 2>/dev/null || echo "")
-          if [ -z "$SHELL_ALIVE" ]; then
-            echo "::warning::gnome-shell exited during initialization — integration tests skipped"
-            echo "::warning::Run integration tests locally with: make integration-test"
-            PASSED=0; FAILED=0; TOTAL=0
-          else
-            echo "gnome-shell running (PID: $SHELL_ALIVE)"
+            dbus-run-session -- bash -c "
+              dconf write /org/gnome/shell/enabled-extensions \"[\\\"'"${UUID}"'\\\"]\" 2>/dev/null
+              gnome-shell --headless --no-x11 --virtual-monitor 1920x1080 \
+                --automation-script /home/gnomeshell/test-integration/runner.js 2>&1
+            "
+          ' 2>&1 || true)
 
-            # Run integration tests via gdbus Eval
-            RESULT=$(do_in_pod gdbus call --session \
-              --dest org.gnome.Shell \
-              --object-path /org/gnome/Shell \
-              --method org.gnome.Shell.Eval \
-              "
-                const Main = imports.ui.main;
-                const ext = Main.extensionManager.lookup('xdock@github.com');
-                'state=' + (ext ? ext.state : 'null');
-              " 2>&1 || true)
-            echo "Extension state: $RESULT"
+          echo "=== Raw output (last 30 lines) ==="
+          echo "$RESULT" | tail -30
 
-            # TODO: Once extension loads, run the full test suite via Eval
-            PASSED=0; FAILED=0; TOTAL=0
-          fi
+          # Filter XDOCK-TEST lines for parsing
+          FILTERED=$(echo "$RESULT" | grep "XDOCK-TEST" || true)
+          echo "=== XDOCK-TEST summary ==="
+          echo "$FILTERED" | grep -E "(Results:|--- |Extension)" || true
 
+          # Parse test counts
+          RESULTS_LINE=$(echo "$FILTERED" | grep 'Results:' || echo "")
+          PASSED=$(echo "$RESULTS_LINE" | grep -oP '\d+(?= passed)' || echo "0")
+          FAILED=$(echo "$RESULTS_LINE" | grep -oP '\d+(?= failed)' || echo "0")
+          TOTAL=$((PASSED + FAILED))
           echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
           echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
           echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
 
-          # Copy screenshots out (if any)
+          # Copy screenshots
           mkdir -p screenshots
           podman cp "${POD}:/tmp/." screenshots/ 2>/dev/null || true
           ls screenshots/xdock-test-*.png 2>/dev/null | wc -l | xargs -I{} echo "{} screenshots captured"
 
           podman stop "${POD}" >/dev/null 2>&1 || true
+
+          # Report results
+          if echo "$FILTERED" | grep -q "SOME TESTS FAILED"; then
+            echo "::warning::Integration tests: $PASSED passed, $FAILED failed"
+          elif [ "$TOTAL" -eq 0 ]; then
+            echo "::warning::No integration tests ran"
+          else
+            echo "Integration tests passed: $PASSED/$TOTAL"
+          fi
         id: integration
 
       - name: Update integration test badge
