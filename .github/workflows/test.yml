@@ -228,8 +228,9 @@ jobs:
 
           # Copy extension zip and test runner into container
           podman cp "${UUID}.zip" "${POD}:/home/gnomeshell/${UUID}.zip"
-          podman cp test/integration/ "${POD}:/home/gnomeshell/test-integration/"
-          podman exec "${POD}" chown -R gnomeshell:gnomeshell /home/gnomeshell/test-integration/
+          podman exec "${POD}" mkdir -p /home/gnomeshell/test-integration
+          podman cp test/integration/. "${POD}:/home/gnomeshell/test-integration/"
+          podman exec "${POD}" chown -R gnomeshell:gnomeshell /home/gnomeshell/test-integration
 
           # Verify files exist in container
           echo "=== Container contents ==="
