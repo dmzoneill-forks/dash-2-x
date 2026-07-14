@@ -236,17 +236,16 @@ jobs:
           echo "=== Container contents ==="
           podman exec "${POD}" ls -la /home/gnomeshell/${UUID}.zip /home/gnomeshell/test-integration/runner.js 2>&1 || true
 
-          # Run integration tests headless via set-env.sh (provides D-Bus session)
+          # Run integration tests headless
           echo "=== Starting integration tests ==="
-          RESULT=$(do_in_pod bash -c '
-            export LIBGL_ALWAYS_SOFTWARE=1
-            export XDOCK_TEST_HOLD=0
-            export XDOCK_TEST_SCREENSHOTS=1
-            rm -f /run/user/$(id -u)/gnome-shell-disable-extensions
+          RESULT=$(podman exec --user gnomeshell --workdir /home/gnomeshell \
+            -e LIBGL_ALWAYS_SOFTWARE=1 \
+            -e XDOCK_TEST_HOLD=0 \
+            -e XDOCK_TEST_SCREENSHOTS=1 \
+            "${POD}" set-env.sh \
             gnome-shell-test-tool --headless \
-              --extension '"${UUID}"'.zip \
-              /home/gnomeshell/test-integration/runner.js 2>&1
-          ' 2>&1 || true)
+              --extension "${UUID}.zip" \
+              /home/gnomeshell/test-integration/runner.js 2>&1 || true)
 
           echo "=== Raw output (last 50 lines) ==="
           echo "$RESULT" | tail -50
