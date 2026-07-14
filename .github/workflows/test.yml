@@ -253,8 +253,16 @@ jobs:
           do_in_pod gnome-extensions enable "${UUID}" 2>/dev/null || true
           sleep 5
 
-          # Verify gnome-shell is running and extension is enabled
+          # Verify gnome-shell is running
+          echo "=== Process check ==="
+          podman exec "${POD}" ps aux 2>&1 | grep -E "gnome-shell|PID" || echo "No gnome-shell process"
+
+          echo "=== D-Bus check ==="
+          do_in_pod dbus-send --session --print-reply --dest=org.freedesktop.DBus \
+            /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 | head -10 || echo "D-Bus not available"
+
           echo "=== Extension status ==="
+          do_in_pod gnome-extensions list 2>&1 || echo "gnome-extensions list failed"
           do_in_pod gnome-extensions info "${UUID}" 2>&1 || echo "Extension info unavailable"
 
           # Run integration tests by evaluating JS inside the running gnome-shell
