@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: Contributors to XDock
-import {Atk, Clutter} from './dependencies/gi.js';
+import {Atk, Clutter} from '../dependencies/gi.js';
 
 import {
     Main,
     SearchController,
     Workspace,
     WorkspaceThumbnail,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
-import {Utils} from './imports.js';
+import {Utils} from '../imports.js';
 
 const APP_SPREAD_RESTORE_ACTION = 'dock-app-spread-restore';
 

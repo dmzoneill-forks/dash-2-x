@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: Contributors to XDock
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
 
-import {GLib, Gio} from './dependencies/gi.js';
+import {GLib, Gio} from '../dependencies/gi.js';
 const {signals: Signals} = imports;
 
-import {Utils} from './imports.js';
+import {Utils} from '../imports.js';
 
 const FileManager1Iface = '<node><interface name="org.freedesktop.FileManager1">\
                                <property name="OpenWindowsWithLocations" type="a{sas}" access="read"/>\

@@ -5,11 +5,11 @@ import {
     Clutter,
     GObject,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 /**
  * A compact workspace indicator strip for the dock.

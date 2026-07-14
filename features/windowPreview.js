@@ -13,22 +13,22 @@ import {
     GObject,
     Meta,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     BoxPointer,
     Main,
     PopupMenu,
     Workspace,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 import {
     Docking,
     Theming,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
-import * as Settings from './platform/settings.js';
+import * as Settings from '../platform/settings.js';
 
 const MAX_PREVIEW_GENERATION_ATTEMPTS = 15;
 

@@ -5,16 +5,16 @@ import {
     Clutter,
     GObject,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     PopupMenu,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 
 
-import {Extension} from './dependencies/shell/extensions/extension.js';
+import {Extension} from '../dependencies/shell/extensions/extension.js';
 
 const {gettext: __} = Extension;
 

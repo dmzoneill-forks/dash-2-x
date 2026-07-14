@@ -233,7 +233,7 @@ test/
 |------|-----------|----------|-----------|
 | springAnimation.js | 100% | 100% | 100% |
 | intellihide.js | 100% | 90% | 100% |
-| windowPreview.js | 100% | 100% | 100% |
+| features/windowPreview.js | 100% | 100% | 100% |
 | theming.js | 97% | 95% | 84% |
 | dash.js | 91% | 84% | 84% |
 | docking.js | 88% | 80% | 82% |

@@ -156,7 +156,7 @@ const {
     computeLabelMaxWidth,
     WindowPreviewMenu,
     WindowPreviewMenuItem,
-} = await import('../windowPreview.js');
+} = await import('../features/windowPreview.js');
 
 // ---------------------------------------------------------------------------
 // Helper: create a mock source (app icon) for WindowPreviewMenu

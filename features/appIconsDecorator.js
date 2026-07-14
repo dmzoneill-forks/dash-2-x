@@ -8,14 +8,14 @@ import {
     AppIcons,
     Docking,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 import {
     AppMenu,
     AppDisplay,
     Main,
     PopupMenu,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 const Labels = Object.freeze({
     RESULTS: Symbol('results'),

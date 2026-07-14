@@ -55,14 +55,14 @@ async function _loadDeferredModules() {
     [CommandPalette, DockProfiles, DockTiling, MprisMonitor,
         ScreencastMonitor, SpringAnimation, PinnedCommands, VolumeControl] =
         await Promise.all([
-            import('./commandPalette.js'),
-            import('./dockProfiles.js'),
-            import('./dockTiling.js'),
-            import('./mprisMonitor.js'),
-            import('./screencastMonitor.js'),
+            import('./widgets/commandPalette.js'),
+            import('./features/dockProfiles.js'),
+            import('./features/dockTiling.js'),
+            import('./services/mprisMonitor.js'),
+            import('./services/screencastMonitor.js'),
             import('./springAnimation.js'),
-            import('./pinnedCommands.js'),
-            import('./volumeControl.js'),
+            import('./features/pinnedCommands.js'),
+            import('./widgets/volumeControl.js'),
         ]);
 }
 

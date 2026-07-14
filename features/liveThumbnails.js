@@ -5,12 +5,12 @@ import {
     Clutter,
     GLib,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Docking,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 const Labels = Object.freeze({
     LIVE_THUMBNAIL: Symbol('live-thumbnail'),

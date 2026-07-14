@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: Contributors to XDock
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
 
-import {Gio} from './dependencies/gi.js';
-import {DBusMenuUtils} from './imports.js';
+import {Gio} from '../dependencies/gi.js';
+import {DBusMenuUtils} from '../imports.js';
 
 let DBusMenu = null;
 DBusMenuUtils.haveDBusMenu().then(m => {

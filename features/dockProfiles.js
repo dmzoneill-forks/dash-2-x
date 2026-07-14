@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // SPDX-FileCopyrightText: Contributors to XDock
 
-import {GLib} from './dependencies/gi.js';
+import {GLib} from '../dependencies/gi.js';
 
 const {signals: Signals} = imports;
 

@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: Contributors to XDock
 // -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
 
-import {Gio, GLib} from './dependencies/gi.js';
+import {Gio, GLib} from '../dependencies/gi.js';
 
 import {
     Docking,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 const {signals: Signals} = imports;
 

@@ -9,13 +9,13 @@ import {
     GObject,
     Shell,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Docking,
     Locations,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 const {signals: Signals} = imports;
 

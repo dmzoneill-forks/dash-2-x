@@ -6,12 +6,12 @@ import {
     GdkPixbuf,
     Gio,
     GLib,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Docking,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 const {signals: Signals} = imports;
 

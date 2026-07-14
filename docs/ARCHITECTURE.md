@@ -14,37 +14,53 @@ This document describes the internal structure of XDock: source files, the Clutt
 | `imports.js` | Re-exports all modules as a single namespace to simplify inter-module imports. |
 | `utils.js` | `GlobalSignalsHandler`, `InjectionsHandler`, `PropertyInjectionsHandler`, color utilities, monitor helpers. |
 
-### Features
+### Features (root)
 
 | File | Purpose |
 |---|---|
 | `appIcons.js` | `DockAppIcon` -- per-app icon with click/scroll/hover behavior. |
-| `appIconsDecorator.js` | Decorates app icons with badges, counts, progress indicators. |
 | `appIconIndicators.js` | Running/notification dot indicators below icons. |
-| `appSpread.js` | App window spread (expose all windows of an app). |
-| `bounceAnimation.js` | Bounce animation on app launch. |
 | `springAnimation.js` | Damped-spring physics animation driver using `Clutter.Timeline`. |
 | `intellihide.js` | Auto-hide the dock when windows overlap it. |
 | `theming.js` | `ThemeManager` and `Transparency` -- custom themes, shelf rendering, dynamic transparency. |
-| `windowPreview.js` | Aero Peek-style window previews on icon hover. |
-| `liveThumbnails.js` | Live window thumbnails in previews. |
 
-### Secondary Features
+### Features (`features/`)
 
 | File | Purpose |
 |---|---|
-| `commandPalette.js` | Quick command launcher overlay. |
-| `dockProfiles.js` | Save/restore dock configuration profiles. |
-| `dockTiling.js` | Window tiling via dock gestures. |
-| `mediaControls.js` | Media playback controls in the dock. |
-| `mprisMonitor.js` | MPRIS D-Bus media player monitoring. |
-| `notificationsMonitor.js` | Notification badge tracking. |
-| `pinnedCommands.js` | Custom pinned command icons. |
-| `quickSettings.js` | Quick settings integration. |
-| `screencastMonitor.js` | Screencast state monitoring (async D-Bus). |
-| `volumeControl.js` / `volumeMenuItem.js` | Volume control in dock. |
-| `wallpaperColorExtractor.js` | Extract dominant color from wallpaper for dock tinting. |
-| `workspaceMinimap.js` | Workspace minimap overlay. |
+| `features/appIconsDecorator.js` | Decorates app icons with badges, counts, progress indicators. |
+| `features/appSpread.js` | App window spread (expose all windows of an app). |
+| `features/bounceAnimation.js` | Bounce animation on app launch. |
+| `features/desktopIconsIntegration.js` | Desktop icons extension compatibility. |
+| `features/dockProfiles.js` | Save/restore dock configuration profiles. |
+| `features/dockTiling.js` | Window tiling via dock gestures. |
+| `features/liveThumbnails.js` | Live window thumbnails in previews. |
+| `features/locations.js` / `features/locationsWorker.js` | Trash, mounted volumes, removable devices in the dock. |
+| `features/pinnedCommands.js` | Custom pinned command icons. |
+| `features/recentFilesMenu.js` | Recent files submenu for app icons. |
+| `features/windowPreview.js` | Aero Peek-style window previews on icon hover. |
+
+### Services (`services/`)
+
+| File | Purpose |
+|---|---|
+| `services/dbusmenuUtils.js` | DBusMenu protocol for app quicklists. |
+| `services/fileManager1API.js` | `org.freedesktop.FileManager1` D-Bus integration. |
+| `services/launcherAPI.js` | Unity Launcher API (progress bars, counts). |
+| `services/mprisMonitor.js` | MPRIS D-Bus media player monitoring. |
+| `services/notificationsMonitor.js` | Notification badge tracking. |
+| `services/screencastMonitor.js` | Screencast state monitoring (async D-Bus). |
+| `services/wallpaperColorExtractor.js` | Extract dominant color from wallpaper for dock tinting. |
+
+### Widgets (`widgets/`)
+
+| File | Purpose |
+|---|---|
+| `widgets/commandPalette.js` | Quick command launcher overlay. |
+| `widgets/mediaControls.js` | Media playback controls in the dock. |
+| `widgets/quickSettings.js` | Quick settings integration. |
+| `widgets/volumeControl.js` / `widgets/volumeMenuItem.js` | Volume control in dock. |
+| `widgets/workspaceMinimap.js` | Workspace minimap overlay. |
 
 ### Settings and Preferences
 
@@ -53,17 +69,6 @@ This document describes the internal structure of XDock: source files, the Clutt
 | `prefs.js` | Preferences window (GTK4), binds `Settings.ui` widgets to GSettings. |
 | `Settings.ui` | GTK4 Builder XML for the preferences dialog. |
 | `schemas/org.gnome.shell.extensions.xdock.gschema.xml` | GSettings schema (27+ keys). |
-
-### Support
-
-| File | Purpose |
-|---|---|
-| `locations.js` / `locationsWorker.js` | Trash, mounted volumes, removable devices in the dock. |
-| `fileManager1API.js` | `org.freedesktop.FileManager1` D-Bus integration. |
-| `launcherAPI.js` | Unity Launcher API (progress bars, counts). |
-| `dbusmenuUtils.js` | DBusMenu protocol for app quicklists. |
-| `desktopIconsIntegration.js` | Desktop icons extension compatibility. |
-| `recentFilesMenu.js` | Recent files submenu for app icons. |
 
 ## Actor Tree Hierarchy
 

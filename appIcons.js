@@ -50,10 +50,10 @@ function _ensureAppIconsDeferred() {
         return;
     _appIconsDeferredLoaded = true;
     Promise.all([
-        import('./liveThumbnails.js'),
-        import('./mediaControls.js'),
-        import('./pinnedCommands.js'),
-        import('./recentFilesMenu.js'),
+        import('./features/liveThumbnails.js'),
+        import('./widgets/mediaControls.js'),
+        import('./features/pinnedCommands.js'),
+        import('./features/recentFilesMenu.js'),
     ]).then(([lt, mc, pc, rf]) => {
         LiveThumbnails = lt;
         MediaControls = mc;
@@ -2092,7 +2092,7 @@ const DockAppIconMenu = class DockAppIconMenu extends PopupMenu.PopupMenu {
                     this.sourceActor.app);
                 if (stream) {
                     this._appendSeparator();
-                    import('./volumeMenuItem.js').then(VolMenu => {
+                    import('./widgets/volumeMenuItem.js').then(VolMenu => {
                         this._volumeMenuItem = new VolMenu.VolumeMenuItem(
                             stream, volumeControl);
                         this.addMenuItem(this._volumeMenuItem);

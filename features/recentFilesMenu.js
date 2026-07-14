@@ -7,19 +7,19 @@ import {
     GLib,
     GObject,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     BoxPointer,
     Main,
     PopupMenu,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 import {
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
-import {Extension} from './dependencies/shell/extensions/extension.js';
+import {Extension} from '../dependencies/shell/extensions/extension.js';
 
 const {gettext: __} = Extension;
 

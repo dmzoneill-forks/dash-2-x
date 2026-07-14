@@ -259,7 +259,7 @@ export const DockDash = GObject.registerClass({
         this._workspaceMinimap = null;
         this._workspaceMinimapContainer = null;
         if (!WorkspaceMinimap) {
-            import('./workspaceMinimap.js').then(m => {
+            import('./widgets/workspaceMinimap.js').then(m => {
                 WorkspaceMinimap = m;
                 this._updateWorkspaceMinimap();
             }).catch(e => logError(e, 'XDock: Failed to load WorkspaceMinimap'));
@@ -268,7 +268,7 @@ export const DockDash = GObject.registerClass({
         }
         // Quick Settings button — lazy-loaded to avoid circular import deadlock
         this._quickSettingsButton = null;
-        import('./quickSettings.js').then(QS => {
+        import('./widgets/quickSettings.js').then(QS => {
             QuickSettings = QS;
             this._quickSettingsButton = new QuickSettings.QuickSettingsButton();
             this._quickSettingsButton._panel?.setDockPosition(Utils.getPosition(this._monitorIndex));

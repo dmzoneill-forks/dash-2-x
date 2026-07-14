@@ -6,11 +6,11 @@ import {
     Clutter,
     GLib,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Main,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 /**
  * Performs a bouncing animation on an icon

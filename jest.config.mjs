@@ -22,7 +22,7 @@ export default {
         'appIcons.js',
         'theming.js',
         'intellihide.js',
-        'windowPreview.js',
+        'features/windowPreview.js',
         'utils.js',
         'springAnimation.js',
     ],

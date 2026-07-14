@@ -8,16 +8,16 @@ import {
     GObject,
     Shell,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Main,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 import {
     Docking,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
 const MAX_RESULTS = 8;
 

@@ -3,7 +3,7 @@
 
 import Gvc from 'gi://Gvc';
 
-import {Utils} from './imports.js';
+import {Utils} from '../imports.js';
 
 /**
  * VolumeControl - Manages per-app audio stream lookups using Gvc.MixerControl.

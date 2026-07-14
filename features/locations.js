@@ -10,20 +10,20 @@ import {
     GObject,
     Shell,
     St,
-} from './dependencies/gi.js';
+} from '../dependencies/gi.js';
 
 import {
     Main,
     ShellMountOperation,
-} from './dependencies/shell/ui.js';
+} from '../dependencies/shell/ui.js';
 
 import {
     Docking,
     Theming,
     Utils,
-} from './imports.js';
+} from '../imports.js';
 
-import {Extension} from './dependencies/shell/extensions/extension.js';
+import {Extension} from '../dependencies/shell/extensions/extension.js';
 
 // Use __ () and N__() for the extension gettext domain, and reuse
 // the shell domain with the default _() and N_()
@@ -346,7 +346,7 @@ export const LocationAppInfo = GObject.registerClass({
     _getHandlerAppFromWorker(cancellable) {
         const locationsWorker = GLib.build_filenamev([
             Docking.DockManager.extension.path,
-            'locationsWorker.js',
+            'features', 'locationsWorker.js',
         ]);
         const locationsWorkerArgs = [LocationAppInfo.GJS_BINARY_PATH, '-m',
             locationsWorker, 'handler', this.location.get_uri(),
