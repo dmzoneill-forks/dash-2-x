@@ -236,21 +236,29 @@ jobs:
           echo "=== Container contents ==="
           podman exec "${POD}" ls -la /home/gnomeshell/${UUID}.zip /home/gnomeshell/test-integration/runner.js 2>&1 || true
 
-          # Run gnome-shell-test-tool with extension loading
-          # The tool starts gnome-shell, loads the extension via --extension,
-          # then runs the automation script inside the gnome-shell process.
+          # Run gnome-shell-test-tool with extension and automation script.
+          # The tool creates a clean XDG environment, installs the extension,
+          # then starts gnome-shell --headless --automation-script which runs
+          # the test runner inside the gnome-shell process.
           echo "=== Starting integration tests ==="
           RESULT=$(do_in_pod env \
             LIBGL_ALWAYS_SOFTWARE=1 \
             XDOCK_TEST_HOLD=0 \
             XDOCK_TEST_SCREENSHOTS=1 \
+            SHELL_DEBUG=backtrace-warnings \
             timeout 120 \
             gnome-shell-test-tool --headless --disable-animations \
               --extension "${UUID}.zip" \
               /home/gnomeshell/test-integration/runner.js 2>&1 || true)
 
-          echo "=== Raw output (last 100 lines) ==="
-          echo "$RESULT" | tail -100
+          echo "=== Raw output (last 120 lines) ==="
+          echo "$RESULT" | tail -120
+
+          # Also check journal for gnome-shell crash info
+          echo "=== Journal (gnome-shell entries) ==="
+          podman exec "${POD}" journalctl --user -b --no-pager 2>/dev/null \
+            | grep -iE "gnome-shell|gjs|segfault|abort|coredump|xdock|automation" \
+            | tail -30 || true
 
           # Filter to XDOCK-TEST lines for parsing
           FILTERED=$(echo "$RESULT" | grep "XDOCK-TEST" || true)
