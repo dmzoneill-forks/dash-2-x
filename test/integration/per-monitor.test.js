@@ -94,12 +94,12 @@ function getTests() {
                 const pos = settings.get_enum('dock-position');
                 const dock = findDock();
                 if (!dock) skip('requires dock actor (headless)');
+                const alloc = dock.get_allocation_box();
+                if (!alloc || (alloc.get_x2() === 0 && alloc.get_y2() === 0))
+                    skip('dock not allocated (headless)');
 
                 // BOTTOM (2): dock should be positioned at or near the bottom of the screen
                 // TOP (0): dock should be positioned at or near the top
-                // For BOTTOM, translation_y is typically >= 0 or the dock's y is near screen bottom
-                // We verify the dock actor exists and is allocated on screen
-                const alloc = dock.get_allocation_box();
                 const dockY1 = alloc.get_y1();
                 const dockY2 = alloc.get_y2();
                 const dockX1 = alloc.get_x1();

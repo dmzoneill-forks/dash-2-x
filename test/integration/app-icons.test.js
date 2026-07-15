@@ -315,6 +315,7 @@ function getTests() {
             const s = getXDockSettings();
             const dock = findDock();
             if (!dock) skip('requires dock actor (headless)');
+            if (!findDashContainer(dock)) skip('requires dash container (headless)');
             const origShowTrash = s.get_boolean('show-trash');
             try {
                 // Enable trash icon

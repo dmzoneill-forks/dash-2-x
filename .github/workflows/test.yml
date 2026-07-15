@@ -242,8 +242,8 @@ jobs:
             "
           ' 2>&1 || true)
 
-          echo "=== Raw output (last 30 lines) ==="
-          echo "$RESULT" | tail -30
+          echo "=== Raw output (last 200 lines) ==="
+          echo "$RESULT" | tail -200
 
           # Parse XDOCK-TEST results
           FILTERED=$(echo "$RESULT" | grep "XDOCK-TEST" || true)
