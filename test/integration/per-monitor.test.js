@@ -94,16 +94,15 @@ function getTests() {
                 const pos = settings.get_enum('dock-position');
                 const dock = findDock();
                 if (!dock) skip('requires dock actor (headless)');
-                const alloc = dock.get_allocation_box?.() ?? dock.allocation;
-                if (!alloc || (alloc.x2 === 0 && alloc.y2 === 0))
-                    skip('dock not allocated (headless)');
-
-                // BOTTOM (2): dock should be positioned at or near the bottom of the screen
-                // TOP (0): dock should be positioned at or near the top
-                const dockY1 = alloc.get_y1();
-                const dockY2 = alloc.get_y2();
-                const dockX1 = alloc.get_x1();
-                const dockX2 = alloc.get_x2();
+                if (!dock.get_allocation_box)
+                    skip('dock not laid out (headless)');
+                const alloc = dock.get_allocation_box();
+                const dockY1 = alloc.y1 ?? alloc.get_y?.() ?? 0;
+                const dockY2 = alloc.y2 ?? 0;
+                const dockX1 = alloc.x1 ?? alloc.get_x?.() ?? 0;
+                const dockX2 = alloc.x2 ?? 0;
+                if (dockX2 === 0 && dockY2 === 0)
+                    skip('dock has zero allocation (headless)');
                 const stageH = global.stage.height;
                 const stageW = global.stage.width;
 
