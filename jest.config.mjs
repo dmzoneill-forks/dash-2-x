@@ -25,6 +25,7 @@ export default {
         'features/windowPreview.js',
         'utils.js',
         'springAnimation.js',
+        'features/bounceAnimation.js',
     ],
     collectCoverage: true,
     coverageReporters: ['text', 'json-summary'],
