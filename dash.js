@@ -490,28 +490,27 @@ export const DockDash = GObject.registerClass({
         const {settings} = Docking.DockManager;
         const enabled = settings.showWorkspaceMinimap;
 
-        // Tear down existing minimap
         if (this._workspaceMinimapContainer) {
             this._workspaceMinimapContainer.destroy();
             this._workspaceMinimapContainer = null;
             this._workspaceMinimap = null;
         }
 
-        if (!enabled)
+        if (!enabled || !WorkspaceMinimap)
             return;
 
-        // Create the minimap and wrap it in a DockDashItemContainer
         this._workspaceMinimap = new WorkspaceMinimap.WorkspaceMinimap();
         this._workspaceMinimapContainer = new DockDashItemContainer(this._position);
         this._workspaceMinimapContainer.setChild(this._workspaceMinimap);
         this._workspaceMinimapContainer.show(false);
 
-        // Place at start or end of the box container
+        const container = settings.showAppsAlwaysInTheEdge || !settings.dockExtended
+            ? this._dashContainer : this._boxContainer;
         const atStart = settings.workspaceMinimapPosition === 'start';
         if (atStart)
-            this._boxContainer.insert_child_below(this._workspaceMinimapContainer, null);
+            container.insert_child_below(this._workspaceMinimapContainer, null);
         else
-            this._boxContainer.insert_child_above(this._workspaceMinimapContainer, null);
+            container.insert_child_above(this._workspaceMinimapContainer, null);
     }
 
     _onDestroy() {
