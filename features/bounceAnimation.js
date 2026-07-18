@@ -110,6 +110,7 @@ export function startBounceAnimation(icon) {
         try {
             icon.remove_all_transitions();
             icon.translation_y = 0;
+            icon.set_pivot_point(0, 0);
         } catch { /* ignore */ }
     }
 

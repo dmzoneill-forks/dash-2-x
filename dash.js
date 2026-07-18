@@ -523,6 +523,12 @@ export const DockDash = GObject.registerClass({
         this.iconAnimator.destroy();
         this._disableMagnification();
 
+        if (this._workspaceMinimapContainer) {
+            this._workspaceMinimapContainer.destroy();
+            this._workspaceMinimapContainer = null;
+            this._workspaceMinimap = null;
+        }
+
         if (this._quickSettingsButton) {
             this._quickSettingsButton.destroy();
             this._quickSettingsButton = null;

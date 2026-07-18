@@ -240,6 +240,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
             } else {
                 this.iconAnimator.removeAnimation(icon, 'wiggle');
                 icon.rotation_angle_z = 0;
+                icon.set_pivot_point(0, 0);
                 this._urgentWindows.forEach(w => delete w._manualUrgency);
                 this._updateUrgentWindows();
             }
@@ -490,6 +491,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
         this.iconAnimator.removeAnimation(icon, 'jiggle');
         icon.rotation_angle_z = 0;
+        icon.set_pivot_point(0, 0);
         this._wiggleJiggling = false;
     }
 

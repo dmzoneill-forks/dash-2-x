@@ -566,7 +566,7 @@ class MountableVolumeAppInfo extends LocationAppInfo {
         // after mounting, preventing the file browser from opening (#123).
         this._handlerApp = null;
 
-        this._updateLocationIcon({custom: true});
+        this._updateLocationIcon({custom: true}).catch(e => logError(e));
     }
 
     _monitorChanges() {
@@ -792,7 +792,7 @@ class TrashAppInfo extends LocationAppInfo {
         }
         this._updateTrash();
 
-        this.connect('notify::empty', () => this._updateLocationIcon());
+        this.connect('notify::empty', () => this._updateLocationIcon().catch(e => logError(e)));
         this.notify('empty');
     }
 

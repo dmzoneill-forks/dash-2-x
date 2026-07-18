@@ -284,6 +284,7 @@ class MediaControlsOverlay extends St.BoxLayout {
     }
 
     _onDestroy() {
+        this._signalsHandler?.destroy();
         this._cancelShow();
         this._cancelHide();
     }
