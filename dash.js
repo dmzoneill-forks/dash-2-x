@@ -1555,7 +1555,9 @@ export const DockDash = GObject.registerClass({
             return;
 
         const [elX, elY] = element.get_transformed_position();
-        const [elW, elH] = element.get_transformed_size();
+        const alloc = element.get_allocation_box();
+        const elW = alloc.x2 - alloc.x1;
+        const elH = alloc.y2 - alloc.y1;
         const center = this._isHorizontal ? elX + elW / 2 : elY + elH / 2;
         const distance = Math.abs(cursor - center);
         const scale = Utils.magnificationScale(distance, spread, maxScale);
@@ -1574,6 +1576,7 @@ export const DockDash = GObject.registerClass({
         if (!icon)
             return;
         const dur = animate ? 200 : 0;
+        icon.remove_all_transitions();
         icon.set_easing_duration(dur);
         icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
         icon.set_scale(1.0, 1.0);
@@ -1584,6 +1587,11 @@ export const DockDash = GObject.registerClass({
      * position along the dock's major axis.
      */
     _onMagnificationMotion(actor, event) {
+        if (this._magnificationResetId) {
+            GLib.source_remove(this._magnificationResetId);
+            this._magnificationResetId = 0;
+        }
+
         // Read all settings once at the top of this hot path
         const magFactor = Settings.get('icon-magnification-factor');
         const maxScale = Math.max(1.0, Math.min(3.0, magFactor));
@@ -1625,16 +1633,22 @@ export const DockDash = GObject.registerClass({
                     child === this._workspaceMinimapContainer ||
                     child === this._quickSettingsButton;
                 const [childX, childY] = child.get_transformed_position();
-                const [childW, childH] = child.get_transformed_size();
+                const childAlloc = child.get_allocation_box();
+                const childW = childAlloc.x2 - childAlloc.x1;
+                const childH = childAlloc.y2 - childAlloc.y1;
                 const center = this._isHorizontal
                     ? childX + childW / 2
                     : childY + childH / 2;
-                const size = this._isHorizontal ? childW : childH;
                 const distance = Math.abs(cursor - center);
                 const scale = isInteractive
                     ? Utils.magnificationScale(distance, spread, maxScale)
                     : 1.0;
-                const extra = size * (scale - 1.0);
+                // Use the allocation (unscaled) size to avoid feedback loops
+                // where a previously-scaled size inflates the extra calculation.
+                const alloc = child.get_allocation_box();
+                const naturalSize = this._isHorizontal
+                    ? alloc.x2 - alloc.x1 : alloc.y2 - alloc.y1;
+                const extra = naturalSize * (scale - 1.0);
                 return {child, scale, extra, isIcon: isAppIcon};
             });
 
@@ -1710,20 +1724,18 @@ export const DockDash = GObject.registerClass({
         return Clutter.EVENT_PROPAGATE;
     }
 
-    /**
-     * Reset all icon scales and translations back to defaults.
-     *
-     * @param {boolean} animate - whether to animate the transition
-     */
-    _resetMagnification(animate) {
-        const dur = animate ? 200 : 0;
+    _forceResetAllScales(dur) {
+        if (this._magnificationResetId) {
+            GLib.source_remove(this._magnificationResetId);
+            this._magnificationResetId = 0;
+        }
 
-        // Reset all _dashContainer children (app icons + edge widgets)
         for (const dc of this._dashContainer.get_children()) {
             if (dc === this._scrollView)
                 continue;
             const children = dc === this._box ? dc.get_children() : [dc];
             for (const child of children) {
+                child.remove_all_transitions();
                 child.set_easing_duration(dur);
                 child.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
                 child.translation_x = 0;
@@ -1733,6 +1745,7 @@ export const DockDash = GObject.registerClass({
                 if (child.child?.icon) {
                     const icon = child.child.icon._iconBin ??
                                  child.child.icon ?? child.child;
+                    icon.remove_all_transitions();
                     icon.set_easing_duration(dur);
                     icon.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
                     icon.set_scale(1.0, 1.0);
@@ -1740,15 +1753,35 @@ export const DockDash = GObject.registerClass({
             }
         }
 
+        if (dur > 0) {
+            this._magnificationResetId = GLib.timeout_add(
+                GLib.PRIORITY_DEFAULT, dur + 50, () => {
+                    this._magnificationResetId = 0;
+                    this._forceResetAllScales(0);
+                    return GLib.SOURCE_REMOVE;
+                });
+        }
+    }
+
+    /**
+     * Reset all icon scales and translations back to defaults.
+     *
+     * @param {boolean} animate - whether to animate the transition
+     */
+    _resetMagnification(animate) {
+        const dur = animate ? 200 : 0;
+
+        this._forceResetAllScales(dur);
+
         this._resetUtilityElement(this._workspaceMinimapContainer, animate);
         this._resetUtilityElement(this._showAppsIcon, animate);
         this._resetUtilityElement(this._quickSettingsButton, animate);
 
-        // kept for backward compat with any external callers
         for (const actor of [this._showAppsIcon, this._workspaceMinimapContainer,
             this._quickSettingsButton]) {
             if (!actor?.visible)
                 continue;
+            actor.remove_all_transitions();
             actor.set_easing_duration(dur);
             actor.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
             actor.translation_x = 0;
@@ -1757,6 +1790,7 @@ export const DockDash = GObject.registerClass({
 
         // Restore background to natural scale
         if (this._background) {
+            this._background.remove_all_transitions();
             this._background.set_easing_duration(dur);
             this._background.set_easing_mode(Clutter.AnimationMode.EASE_OUT_QUAD);
             this._background.set_scale(1.0, 1.0);
