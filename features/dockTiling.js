@@ -67,19 +67,21 @@ export class DockTiling {
         if (!this._isDragging)
             return;
 
-        if (this._tileSide && this._dragApp)
-            this._tileApp(this._dragApp, this._tileSide, this._dragMonitorIndex);
+        try {
+            if (this._tileSide && this._dragApp)
+                this._tileApp(this._dragApp, this._tileSide, this._dragMonitorIndex);
 
-        this._isDragging = false;
-        this._dragApp = null;
-        this._tileSide = null;
-        this._dragMonitorIndex = -1;
+            this._dragApp = null;
+            this._tileSide = null;
+            this._dragMonitorIndex = -1;
 
-        this._hideOverlay();
-
-        if (this._pointerWatch) {
-            PointerWatcher.getPointerWatcher()._removeWatch(this._pointerWatch);
-            this._pointerWatch = null;
+            this._hideOverlay();
+        } finally {
+            this._isDragging = false;
+            if (this._pointerWatch) {
+                PointerWatcher.getPointerWatcher()._removeWatch(this._pointerWatch);
+                this._pointerWatch = null;
+            }
         }
     }
 
@@ -142,7 +144,6 @@ export class DockTiling {
             return;
 
         const overlay = this._overlay;
-        this._overlay = null;
 
         overlay.ease({
             opacity: 0,
@@ -150,8 +151,12 @@ export class DockTiling {
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             onComplete: () => {
                 overlay.destroy();
+                if (this._overlay === overlay)
+                    this._overlay = null;
             },
         });
+
+        this._overlay = null;
     }
 
     _tileApp(app, side, monitorIndex) {

@@ -684,6 +684,12 @@ const DockedDash = GObject.registerClass({
         // Remove existing barrier
         this._removeBarrier();
 
+        // Clean up pressure barrier
+        if (this._pressureBarrier) {
+            this._pressureBarrier.destroy();
+            this._pressureBarrier = null;
+        }
+
         // Remove pointer watcher
         if (this._dockWatch) {
             PointerWatcher.getPointerWatcher()._removeWatch(this._dockWatch);

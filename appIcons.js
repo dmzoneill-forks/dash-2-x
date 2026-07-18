@@ -447,6 +447,20 @@ export const DockAbstractAppIcon = GObject.registerClass({
             this._liveThumbnailManager = null;
         }
 
+        // Clean up preview menu
+        if (this._previewMenu) {
+            this._previewMenu.destroy();
+            this._previewMenu = null;
+        }
+        this._previewMenuManager = null;
+
+        // Clean up recent files menu
+        if (this._recentFilesMenuInstance) {
+            this._recentFilesMenuInstance.destroy();
+            this._recentFilesMenuInstance = null;
+        }
+        this._recentFilesMenuManager = null;
+
         super._onDestroy();
 
         // This is necessary due to an upstream bug

@@ -1895,9 +1895,16 @@ export const DockDash = GObject.registerClass({
             }
         }
 
+        if (iconChildren.length === 0)
+            return;
+
         const maxIconSize = availSpace / iconChildren.length;
         // NOTE: global scaleFactor; per-monitor scale not yet used here.
         const {scaleFactor} = St.ThemeContext.get_for_stage(global.stage);
+
+        if (this._availableIconSizes.length === 0)
+            return;
+
         const iconSizes = this._availableIconSizes.map(s => s * scaleFactor);
 
         let [newIconSize] = this._availableIconSizes;
