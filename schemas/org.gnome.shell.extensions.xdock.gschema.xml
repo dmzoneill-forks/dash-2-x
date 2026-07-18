@@ -175,11 +175,6 @@
       <summary>Dock always visible</summary>
       <description>Dock is always visible</description>
     </key>
-    <key type="b" name="scroll-switch-workspace">
-      <default>true</default>
-      <summary>Switch workspace by scrolling over the dock</summary>
-      <description>Add the possibility to switch workspace by mouse scrolling over the dock.</description>
-    </key>
     <key type="i" name="dash-max-icon-size">
       <default>48</default>
       <summary>Maximum dash icon size</summary>
@@ -319,11 +314,6 @@
       <default>true</default>
       <summary>Show application button on the edge when using centered panel mode</summary>
     </key>
-    <key type="b" name="bolt-support">
-      <default>true</default>
-      <summary>Basic compatibility with bolt extensions</summary>
-      <description>Make the extension work properly when bolt extensions is enabled</description>
-    </key>
     <key type="d" name="height-fraction">
       <default>0.90</default>
       <summary>Dock max height/width (fraction of available space)</summary>
@@ -350,14 +340,6 @@
       <default>false</default>
       <summary>Enable multi-monitor docks</summary>
       <description>Show a dock on every monitor</description>
-    </key>
-    <key type="b" name="minimize-shift">
-      <default>true</default>
-      <summary>Minimize on shift+click</summary>
-    </key>
-    <key type="b" name="activate-single-window">
-      <default>true</default>
-      <summary>Activate only one window</summary>
     </key>
     <key name="click-action" enum="org.gnome.shell.extensions.xdock.clickAction">
       <default>'cycle-windows'</default>

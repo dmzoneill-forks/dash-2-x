@@ -42,6 +42,37 @@ const Labels = Object.freeze({
 const ACTIVE_WINDOW_PREVIEW_CLASS = 'active-window-preview';
 
 /**
+ * Map preview-animation-style setting values to Clutter easing modes.
+ *
+ *   0 = Instant (no animation)
+ *   1 = Fade
+ *   2 = Slide
+ *   3 = Scale (zoom)
+ *   4 = Expand (default)
+ *   5 = Dissolve
+ *   6 = Cascade (staggered)
+ */
+const ANIMATION_STYLE_MODES = [
+    Clutter.AnimationMode.EASE_OUT_QUAD,        // 0: Instant — fallback easing
+    Clutter.AnimationMode.LINEAR,               // 1: Fade
+    Clutter.AnimationMode.EASE_IN_OUT_QUAD,     // 2: Slide
+    Clutter.AnimationMode.EASE_OUT_BOUNCE,      // 3: Scale (zoom)
+    Clutter.AnimationMode.EASE_OUT_EXPO,        // 4: Expand (default)
+    Clutter.AnimationMode.EASE_OUT_CUBIC,       // 5: Dissolve
+    Clutter.AnimationMode.EASE_IN_OUT_CUBIC,    // 6: Cascade
+];
+
+/**
+ * Get the Clutter.AnimationMode for the current preview-animation-style.
+ *
+ * @returns {Clutter.AnimationMode}
+ */
+function _getPreviewAnimationMode() {
+    const style = Settings.get('preview-animation-style');
+    return ANIMATION_STYLE_MODES[style] ?? Clutter.AnimationMode.EASE_OUT_EXPO;
+}
+
+/**
  * Compute the preview scale factor for a window of the given size.
  *
  * @param {number} width - window pixel width
@@ -1038,22 +1069,25 @@ class WindowPreviewMenuItem extends PopupMenu.PopupBaseMenuItem {
         this.set_width(0);
 
         const time = animate ? Settings.get('preview-animation-duration') : 0;
+        const animMode = _getPreviewAnimationMode();
         this.remove_all_transitions();
         this.ease({
             opacity: 255,
             width: fullWidth,
             duration: time,
-            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
+            mode: animMode,
         });
     }
 
     _animateOutAndDestroy() {
         const animDuration = Settings.get('preview-animation-duration');
+        const animMode = _getPreviewAnimationMode();
 
         this.remove_all_transitions();
         this.ease({
             opacity: 0,
             duration: animDuration,
+            mode: animMode,
         });
 
         this.ease({
@@ -1061,6 +1095,7 @@ class WindowPreviewMenuItem extends PopupMenu.PopupBaseMenuItem {
             height: 0,
             duration: animDuration,
             delay: animDuration,
+            mode: animMode,
             onComplete: () => this.destroy(),
         });
     }

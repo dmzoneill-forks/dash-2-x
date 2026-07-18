@@ -1579,6 +1579,12 @@ const DockSettings = GObject.registerClass({
         this._settings.bind('icon-magnification',
             this._builder.get_object('magnification_hover_highlight_row'),
             'sensitive', Gio.SettingsBindFlags.GET);
+        this._settings.bind('icon-magnification-all',
+            this._builder.get_object('icon_magnification_all_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('icon-magnification',
+            this._builder.get_object('icon_magnification_all_switch').get_parent().get_parent(),
+            'sensitive', Gio.SettingsBindFlags.GET);
         this._settings.bind('spring-animations',
             this._builder.get_object('spring_animations_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);
@@ -1626,6 +1632,24 @@ const DockSettings = GObject.registerClass({
         this._settings.bind('show-workspace-minimap',
             this._builder.get_object('show_workspace_minimap_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);
+
+        // Workspace minimap position combo (string: 'start' or 'end')
+        const minimapPosCombo = this._builder.get_object('workspace_minimap_position_combo');
+        minimapPosCombo.set_active(this._settings.get_string('workspace-minimap-position') === 'start' ? 0 : 1);
+        minimapPosCombo.connect('changed', combo => {
+            this._settings.set_string('workspace-minimap-position', combo.get_active() === 0 ? 'start' : 'end');
+        });
+        this._settings.bind('show-workspace-minimap',
+            minimapPosCombo,
+            'sensitive', Gio.SettingsBindFlags.GET);
+
+        this._settings.bind('default-windows-preview-to-open',
+            this._builder.get_object('default_preview_to_open_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('drag-to-focus',
+            this._builder.get_object('drag_to_focus_switch'),
+            'active', Gio.SettingsBindFlags.DEFAULT);
+
         this._settings.bind('show-recent-files',
             this._builder.get_object('show_recent_files_switch'),
             'active', Gio.SettingsBindFlags.DEFAULT);
@@ -1753,7 +1777,7 @@ const DockSettings = GObject.registerClass({
                 'disable-overview-on-startup', 'always-center-icons',
                 'show-apps-always-in-the-edge', 'hide-tooltip', 'show-previews-hover',
                 'scroll-to-focused-application', 'isolate-locations',
-                'show-mounts-only-mounted', 'show-mounts-network', 'bolt-support',
+                'show-mounts-only-mounted', 'show-mounts-network',
                 'shelf-gradient-top-color', 'shelf-gradient-bottom-color',
                 'shelf-highlight-color', 'shelf-shadow-color',
                 'shelf-shadow-scale', 'shelf-highlight-width', 'shelf-shadow-width',

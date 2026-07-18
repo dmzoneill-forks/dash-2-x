@@ -72,7 +72,6 @@ const PROFILE_SETTINGS_KEYS = [
     'isolate-locations',
     'show-mounts-only-mounted',
     'show-mounts-network',
-    'bolt-support',
 ];
 
 export class DockProfiles {
