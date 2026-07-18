@@ -298,6 +298,8 @@ export const DockAbstractAppIcon = GObject.registerClass({
         this._signalsHandler.add(
             Docking.DockManager.settings,
             'changed::live-window-thumbnails', () => {
+                if (!this._liveThumbnailManager)
+                    return;
                 try {
                     if (Settings.get('live-window-thumbnails'))
                         this._liveThumbnailManager.enable();

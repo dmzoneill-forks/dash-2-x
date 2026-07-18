@@ -1210,19 +1210,31 @@ export const DockDash = GObject.registerClass({
     }
 
     _ensureItemVisibility(actor) {
+        // Clean up previous pending visibility check
+        if (this._ensureActorVisibilityTimeoutId) {
+            GLib.source_remove(this._ensureActorVisibilityTimeoutId);
+            this._ensureActorVisibilityTimeoutId = 0;
+        }
+        if (this._ensureVisibilityDestroyId && this._ensureVisibilityActor) {
+            try {
+                this._ensureVisibilityActor.disconnect(this._ensureVisibilityDestroyId);
+            } catch { /* actor may already be destroyed */ }
+            this._ensureVisibilityDestroyId = 0;
+            this._ensureVisibilityActor = null;
+        }
+
         if (actor?.hover) {
-            const destroyId =
+            this._ensureVisibilityActor = actor;
+            this._ensureVisibilityDestroyId =
                 actor.connect('destroy', () => this._ensureItemVisibility(null));
             this._ensureActorVisibilityTimeoutId = GLib.timeout_add(
                 GLib.PRIORITY_DEFAULT, 100, () => {
-                    actor.disconnect(destroyId);
-                    ensureActorVisibleInScrollView(this._scrollView, actor);
                     this._ensureActorVisibilityTimeoutId = 0;
+                    this._ensureVisibilityDestroyId = 0;
+                    this._ensureVisibilityActor = null;
+                    ensureActorVisibleInScrollView(this._scrollView, actor);
                     return GLib.SOURCE_REMOVE;
                 });
-        } else if (this._ensureActorVisibilityTimeoutId) {
-            GLib.source_remove(this._ensureActorVisibilityTimeoutId);
-            this._ensureActorVisibilityTimeoutId = 0;
         }
     }
 

@@ -111,8 +111,9 @@ export class DominantColorExtractor {
         if (width >= 2 * DOMINANT_COLOR_ICON_SIZE)
             resampleX = Math.floor(width / DOMINANT_COLOR_ICON_SIZE);
 
+        const nChannels = 4;
         if (resampleX !== 1 || resampleY !== 1)
-            pixels = this._resamplePixels(pixels, resampleX, resampleY);
+            pixels = this._resamplePixels(pixels, width, height, nChannels, resampleX, resampleY);
 
         // computing the limit outside the for (where it would be repeated at each iteration)
         // for performance reasons
@@ -173,27 +174,24 @@ export class DominantColorExtractor {
      * Downscale large icons before scanning for the backlight color to
      * improve performance.
      *
-     * @param pixBuf
      * @param pixels
+     * @param width
+     * @param height
+     * @param nChannels
      * @param resampleX
      * @param resampleY
      *
      * @returns [];
      */
-    _resamplePixels(pixels, resampleX, resampleY) {
+    _resamplePixels(pixels, width, height, nChannels, resampleX, resampleY) {
         const resampledPixels = [];
-        // computing the limit outside the for (where it would be repeated at each iteration)
-        // for performance reasons
-        const limit = pixels.length / (resampleX * resampleY) / 4;
-        for (let i = 0; i < limit; i++) {
-            const pixel = i * resampleX * resampleY;
-
-            resampledPixels.push(pixels[pixel * 4]);
-            resampledPixels.push(pixels[pixel * 4 + 1]);
-            resampledPixels.push(pixels[pixel * 4 + 2]);
-            resampledPixels.push(pixels[pixel * 4 + 3]);
+        for (let y = 0; y < height; y += resampleY) {
+            for (let x = 0; x < width; x += resampleX) {
+                const offset = (y * width + x) * nChannels;
+                for (let c = 0; c < nChannels; c++)
+                    resampledPixels.push(pixels[offset + c]);
+            }
         }
-
         return resampledPixels;
     }
 }
