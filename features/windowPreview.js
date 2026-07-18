@@ -538,7 +538,7 @@ class WindowPreviewList extends PopupMenu.PopupMenuSection {
 
         // All app windows with a static order
         const newWin = this._source.getInterestingWindows().sort((a, b) =>
-            a.get_stable_sequence() > b.get_stable_sequence());
+            a.get_stable_sequence() - b.get_stable_sequence());
 
         const addedItems = [];
         const removedActors = [];

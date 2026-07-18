@@ -112,8 +112,8 @@ export class RunningIndicatorDots extends RunningIndicatorBase {
             return;
         this._styleDirty = false;
         const [width, height] = this._area.get_surface_size();
-        this._width = height;
-        this._height = width;
+        this._width = width;
+        this._height = height;
 
         // By default re-use the style - background color, and border width and color -
         // of the default dot

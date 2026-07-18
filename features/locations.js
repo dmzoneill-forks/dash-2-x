@@ -857,7 +857,7 @@ class TrashAppInfo extends LocationAppInfo {
                 logError(e, 'Impossible to get trash children from infos');
         } finally {
             cancellable.cancel();
-            if (this._updateIconCancellable === cancellable)
+            if (this._updateTrashCancellable === cancellable)
                 delete this._updateTrashCancellable;
         }
 
@@ -875,7 +875,7 @@ class TrashAppInfo extends LocationAppInfo {
                 logError(e, 'Impossible to enumerate trash children');
         } finally {
             cancellable.cancel();
-            if (this._updateIconCancellable === cancellable)
+            if (this._updateTrashCancellable === cancellable)
                 delete this._updateTrashCancellable;
         }
     }

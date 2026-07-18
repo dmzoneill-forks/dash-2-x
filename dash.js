@@ -624,16 +624,16 @@ export const DockDash = GObject.registerClass({
         if (this._redisplayDebounceId)
             return;
 
-        this._redisplayDebounceId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT, 100, () => {
-                this._redisplayDebounceId = 0;
-                Dash.Dash.prototype._queueRedisplay.call(this, ...args);
-                return GLib.SOURCE_REMOVE;
-            });
         if (this._dragInProgress) {
             this._redisplayQueuedDuringDrag = true;
             return;
         }
+
+        this._redisplayDebounceId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT, 100, () => {
+                this._redisplayDebounceId = 0;
+                return GLib.SOURCE_REMOVE;
+            });
         Dash.Dash.prototype._queueRedisplay.call(this, ...args);
     }
 
@@ -2764,7 +2764,7 @@ export const DockDash = GObject.registerClass({
             this._quickSettingsButton.get_parent()?.remove_child(this._quickSettingsButton);
             // Always place after the show-apps button (at the extreme end)
             if (settings.showAppsAtTop)
-                container.insert_child_above(this._quickSettingsButton, null);
+                container.insert_child_below(this._quickSettingsButton, null);
             else
                 container.insert_child_above(this._quickSettingsButton, null);
         }

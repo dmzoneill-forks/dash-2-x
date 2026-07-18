@@ -1035,7 +1035,8 @@ const DockedDash = GObject.registerClass({
 
     _onOverviewHiding() {
         this._ignoreHover = false;
-        this._intellihide.enable();
+        if (this._intellihideIsEnabled)
+            this._intellihide.enable();
         this._updateDashVisibility();
     }
 
@@ -1742,7 +1743,7 @@ const DockedDash = GObject.registerClass({
     }
 
     _onDragEnd() {
-        if (this._oldIgnoreHover)
+        if (this._oldIgnoreHover !== undefined)
             this._ignoreHover = this._oldIgnoreHover;
         this._oldIgnoreHover = null;
         if (this._box?.get_stage())
@@ -3535,6 +3536,7 @@ export class DockManager {
                     dockManager._inCtrlAltTabSwitcher = true;
                     this.constructor.prototype._finish.call(this, ...args);
                     delete dockManager._inCtrlAltTabSwitcher;
+                    return;
                 }
                 originalFunction.call(this, ...args);
                 /* eslint-enable no-invalid-this */

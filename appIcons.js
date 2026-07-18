@@ -415,8 +415,6 @@ export const DockAbstractAppIcon = GObject.registerClass({
             return;
 
         this._mediaControlsOverlay.scheduleHide();
-        this._recentFilesMenuManager = null;
-        this._recentFilesMenuInstance = null;
     }
 
     _onDestroy() {
@@ -1036,7 +1034,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
                     if (effectiveFocused) {
                         if (buttonAction !== clickAction.FOCUS_OR_APP_SPREAD) {
                             // Window is raised, minimize it
-                            this._minimizeWindow(w);
+                            this._minimizeWindow(false);
                         }
                     } else {
                         // Window is minimized, raise it
@@ -1524,7 +1522,7 @@ export const DockAbstractAppIcon = GObject.registerClass({
 
         if (window === 'MINIMIZE') {
             const [w] = recentlyClickedAppWindows;
-            this._minimizeWindow(w);
+            this._minimizeWindow(false);
         } else {
             Main.activateWindow(window);
             if (window.get_monitor() !== this.monitorIndex)
